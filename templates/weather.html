@@ -1,0 +1,2637 @@
+{% extends "base.html" %}
+
+{% block title %}WeatherGuard Harvest - Anuradhapura Weather{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='plant_tracking/styles.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            color: #333;
+            background-color: #f4f9f4;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: flex;
+            min-height: calc(100vh - 110px); /* 80px nav + 30px alert strip */
+            margin-top: 110px; /* space for fixed nav (80px) + alert strip (30px) */
+            position: relative;
+            gap: 0;
+            overflow: visible; /* allow fixed child */
+        }
+
+        .left {
+            position: fixed;
+            left: 0;
+            top: 110px; /* nav height (80px) + alert strip (30px) */
+            width: 50%;
+            height: calc(100vh - 110px); /* 80px nav + 30px alert strip */
+            background: #e6efe6;
+            z-index: 10;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .right {
+            position: fixed;
+            right: 0;
+            top: 110px; /* nav height (80px) + alert strip (30px) */
+            width: 50%;
+            height: calc(100vh - 110px); /* 80px nav + 30px alert strip */
+            overflow-y: auto; /* scroll inside panel only */
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(to bottom, #a8e063, #56ab2f) !important;
+            color: #ffffff;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        #right-panel {
+            background: linear-gradient(to bottom, #a8e063, #56ab2f) !important;
+        }
+
+        .panel,
+        .forecast-section {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 420px;
+            width: 100%;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .controls label {
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .controls select {
+            padding: 12px 14px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.95);
+            color: #1d2b21;
+            font-size: 1rem;
+        }
+
+        .controls button {
+            transition: all 0.3s ease;
+        }
+        
+        .controls button:hover {
+            background: linear-gradient(180deg, #388659, #2d7d52) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        
+        .controls button:active {
+            transform: translateY(0);
+        }
+        
+        .controls button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .forecast-card { 
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        h1 { font-size: 2.1em; margin-bottom: 12px; line-height: 1.2; }
+        h2 { font-size: 1.4em; margin-bottom: 10px; }
+        .weather-icon { font-size: 4em; margin-bottom: 12px; }
+        .detail { margin: 6px 0; }
+        .forecast-day { font-size: 0.95em; }
+
+        /* Fixed header bar reuse - base.html already provides header */
+        /* Calculate nav height: logo (60px) + padding (15px) = ~75px, but use 80px for safety */
+        
+        /* Critical Weather Alert Strip - Below navigation bar */
+        .weather-alert-strip {
+            position: fixed;
+            top: 80px; /* Below navigation bar (logo height 60px + padding) */
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(90deg, #2c5f41, #1e4d2f, #2c5f41);
+            background-size: 200% 100%;
+            animation: alertPulse 3s ease-in-out infinite;
+            z-index: 999;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(44, 95, 65, 0.4);
+            display: flex;
+            align-items: center;
+        }
+        
+        .weather-alert-content {
+            display: inline-flex;
+            white-space: nowrap;
+            animation: scrollAlert 500s linear infinite;
+            height: 100%;
+            align-items: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 30px;
+            will-change: transform;
+            position: relative;
+            min-width: max-content;
+        }
+        
+        .weather-alert-content span {
+            padding: 0 8px;
+            display: inline-block;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        
+        .alert-separator {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 0 4px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+        
+        @keyframes scrollAlert {
+            0% { 
+                transform: translateX(100vw); 
+            }
+            100% { 
+                transform: translateX(-100%); 
+            }
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading-alert {
+            animation: blink 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes alertPulse {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* High-contrast mode when gradient is bright */
+        .right.dark-text { color: #102a14; }
+        .right.dark-text h1,
+        .right.dark-text h2,
+        .right.dark-text .detail,
+        .right.dark-text label { color: #102a14; }
+        .right.dark-text .panel,
+        .right.dark-text .forecast-section { background: rgba(255,255,255,0.97); border-color: rgba(0,0,0,0.06); }
+        .right.dark-text .controls select { border-color: rgba(0,0,0,0.2); background: #ffffff; color: #102a14; }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            .container { flex-direction: column; margin-top: 150px; }
+            .left { position: relative; left: auto; top: auto; width: 100%; height: 360px; }
+            .right { position: relative; right: auto; top: auto; width: 100%; height: auto; overflow: visible; padding: 16px; }
+            .panel, .forecast-section { max-width: 100%; }
+            .weather-alert-strip { top: 80px; height: 30px; }
+            .weather-alert-content { font-size: 10px; }
+        }
+
+        /* Leaflet fix */
+        .leaflet-container { height: 100% !important; width: 100% !important; }
+        
+        
+        /* Location Modal - Modern Design */
+        .location-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .location-modal.active {
+            display: flex;
+        }
+        
+        .location-modal-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f4f9f4 100%);
+            border-radius: 20px;
+            padding: 35px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .location-modal-content h3 {
+            color: #2d7d52;
+            font-size: 1.6em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .location-modal-content h3 i {
+            color: #52AA8A;
+            font-size: 1.2em;
+        }
+        
+        .location-modal-content p {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+        
+        .location-modal-content p:last-of-type {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 25px;
+        }
+        
+        .location-modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .location-modal-buttons button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            max-width: 180px;
+        }
+        
+        .location-modal-buttons .btn-allow {
+            background: linear-gradient(135deg, #52AA8A, #388659);
+            color: white;
+            box-shadow: 0 4px 15px rgba(82, 170, 138, 0.4);
+        }
+        
+        .location-modal-buttons .btn-allow:hover {
+            background: linear-gradient(135deg, #388659, #2d7d52);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(82, 170, 138, 0.5);
+        }
+        
+        .location-modal-buttons .btn-cancel {
+            background: #f0f0f0;
+            color: #666;
+            border: 2px solid #ddd;
+        }
+        
+        .location-modal-buttons .btn-cancel:hover {
+            background: #e0e0e0;
+            border-color: #bbb;
+        }
+        
+        /* GPS Location Button */
+        .gps-location-btn {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 12px;
+            background: linear-gradient(180deg, #52AA8A, #388659);
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-top: 8px;
+        }
+        
+        .gps-location-btn:hover {
+            background: linear-gradient(180deg, #388659, #2d7d52);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        
+        .gps-location-btn:active {
+            transform: translateY(0);
+        }
+        
+        .gps-location-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .gps-location-btn i {
+            margin-right: 8px;
+        }
+        
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Critical Weather Alert Strip - Below navigation bar -->
+    <div class="weather-alert-strip" id="weather-alert-strip">
+        <div class="weather-alert-content" id="weather-alert-content">
+            <!-- Alerts will be populated by JavaScript -->
+        </div>
+    </div>
+
+
+    <div class="container">
+        <div class="left">
+            <div id="map"></div>
+        </div>
+        <div class="right" id="right-panel">
+            <div class="panel">
+                <div class="controls">
+                    <label for="province-select" data-i18n="weather.province">Province</label>
+                    <select id="province-select" onchange="filterCitiesByProvince()">
+                        <option value="" data-i18n="weather.allProvinces">All Provinces</option>
+                        <option value="North Central" data-original-province="North Central">North Central Province</option>
+                        <option value="North Western" data-original-province="North Western">North Western Province</option>
+                        <option value="Western" data-original-province="Western">Western Province</option>
+                        <option value="Central" data-original-province="Central">Central Province</option>
+                        <option value="Sabaragamuwa" data-original-province="Sabaragamuwa">Sabaragamuwa Province</option>
+                        <option value="Southern" data-original-province="Southern">Southern Province</option>
+                        <option value="Uva" data-original-province="Uva">Uva Province</option>
+                        <option value="Eastern" data-original-province="Eastern">Eastern Province</option>
+                        <option value="Northern" data-original-province="Northern">Northern Province</option>
+                    </select>
+                </div>
+                <div class="controls">
+                    <label for="city-select" data-i18n="weather.selectCity">City</label>
+                    <select id="city-select" onchange="filterSubAreasByCity(); searchCity();">
+                        <option value="" data-i18n="weather.selectCityOption">Select a city</option>
+                        <!-- North Central Province -->
+                        <option value="Anuradhapura" data-province="North Central">Anuradhapura</option>
+                        <option value="Mihintale" data-province="North Central">Mihintale</option>
+                        <option value="Kekirawa" data-province="North Central">Kekirawa</option>
+                        <option value="Medawachchiya" data-province="North Central">Medawachchiya</option>
+                        <option value="Habarana" data-province="North Central">Habarana</option>
+                        <option value="Eppawala" data-province="North Central">Eppawala</option>
+                        <option value="Galenbindunuwewa" data-province="North Central">Galenbindunuwewa</option>
+                        <option value="Galnewa" data-province="North Central">Galnewa</option>
+                        <option value="Horowupotana" data-province="North Central">Horowupotana</option>
+                        <option value="Kahatagasdigiliya" data-province="North Central">Kahatagasdigiliya</option>
+                        <option value="Bulnewa" data-province="North Central">Bulnewa</option>
+                        <option value="Ganewalpola" data-province="North Central">Ganewalpola</option>
+                        <option value="Polonnaruwa" data-province="North Central">Polonnaruwa</option>
+                        <!-- North Western Province -->
+                        <option value="Kurunegala" data-province="North Western">Kurunegala</option>
+                        <option value="Puttalam" data-province="North Western">Puttalam</option>
+                        <option value="Chilaw" data-province="North Western">Chilaw</option>
+                        <option value="Kuliyapitiya" data-province="North Western">Kuliyapitiya</option>
+                        <option value="Narammala" data-province="North Western">Narammala</option>
+                        <!-- Western Province -->
+                        <option value="Colombo" data-province="Western">Colombo</option>
+                        <option value="Gampaha" data-province="Western">Gampaha</option>
+                        <option value="Kalutara" data-province="Western">Kalutara</option>
+                        <option value="Negombo" data-province="Western">Negombo</option>
+                        <option value="Moratuwa" data-province="Western">Moratuwa</option>
+                        <option value="Panadura" data-province="Western">Panadura</option>
+                        <!-- Central Province -->
+                        <option value="Kandy" data-province="Central">Kandy</option>
+                        <option value="Nuwara Eliya" data-province="Central">Nuwara Eliya</option>
+                        <option value="Matale" data-province="Central">Matale</option>
+                        <option value="Hatton" data-province="Central">Hatton</option>
+                        <option value="Gampola" data-province="Central">Gampola</option>
+                        <!-- Sabaragamuwa Province -->
+                        <option value="Ratnapura" data-province="Sabaragamuwa">Ratnapura</option>
+                        <option value="Kegalle" data-province="Sabaragamuwa">Kegalle</option>
+                        <option value="Balangoda" data-province="Sabaragamuwa">Balangoda</option>
+                        <option value="Avissawella" data-province="Sabaragamuwa">Avissawella</option>
+                        <!-- Southern Province -->
+                        <option value="Galle" data-province="Southern">Galle</option>
+                        <option value="Matara" data-province="Southern">Matara</option>
+                        <option value="Hambantota" data-province="Southern">Hambantota</option>
+                        <option value="Weligama" data-province="Southern">Weligama</option>
+                        <option value="Tangalle" data-province="Southern">Tangalle</option>
+                        <!-- Uva Province -->
+                        <option value="Badulla" data-province="Uva">Badulla</option>
+                        <option value="Monaragala" data-province="Uva">Monaragala</option>
+                        <option value="Bandarawela" data-province="Uva">Bandarawela</option>
+                        <option value="Haputale" data-province="Uva">Haputale</option>
+                        <!-- Eastern Province -->
+                        <option value="Batticaloa" data-province="Eastern">Batticaloa</option>
+                        <option value="Trincomalee" data-province="Eastern">Trincomalee</option>
+                        <option value="Ampara" data-province="Eastern">Ampara</option>
+                        <option value="Kalmunai" data-province="Eastern">Kalmunai</option>
+                        <!-- Northern Province -->
+                        <option value="Jaffna" data-province="Northern">Jaffna</option>
+                        <option value="Vavuniya" data-province="Northern">Vavuniya</option>
+                        <option value="Kilinochchi" data-province="Northern">Kilinochchi</option>
+                        <option value="Mullaitivu" data-province="Northern">Mullaitivu</option>
+                    </select>
+                </div>
+                <div class="controls">
+                    <label for="sub-area-select" data-i18n="weather.subArea">Sub-Area (Optional)</label>
+                    <select id="sub-area-select" onchange="searchSubArea()">
+                        <option value="" data-i18n="weather.selectSubArea">Select a sub-area</option>
+                    </select>
+                </div>
+                <div class="controls">
+                    <button type="button" id="current-location-btn" onclick="handleGetCurrentLocation()" class="gps-location-btn" data-i18n="weather.getCurrentLocation">
+                        <i class="fas fa-map-marker-alt"></i> <span data-i18n="weather.getCurrentLocation">Get Current Location</span>
+                    </button>
+                </div>
+                <div class="weather-icon" id="weather-icon">🌤️</div>
+                <p class="detail" id="temperature"><span class="label-text" data-i18n="weather.temperatureLabel">Temperature:</span> <span class="value-text">--</span> °C</p>
+                <p class="detail" id="humidity"><span class="label-text" data-i18n="weather.humidityLabel">Humidity:</span> <span class="value-text">--</span> %</p>
+                <p class="detail" id="wind-speed"><span class="label-text" data-i18n="weather.windSpeedLabel">Wind Speed:</span> <span class="value-text">--</span> km/h</p>
+                <p class="detail" id="rainfall"><span class="label-text" data-i18n="weather.rainfallLabel">Rainfall:</span> <span class="value-text">--</span> mm</p>
+                <p class="detail" id="condition"><span class="label-text" data-i18n="weather.conditionLabel">Condition:</span> <span class="value-text">--</span></p>
+            </div>
+            <div class="panel">
+                <div class="controls">
+                    <label for="forecast-select" data-i18n="weather.forecast">Forecast</label>
+                    <select id="forecast-select" onchange="updateForecastDisplay()">
+                        <option value="weekly" data-i18n="weather.weeklyForecast">7-Day Forecast</option>
+                        <option value="climate" data-i18n="weather.climateOutlook">3-Month Climate Outlook</option>
+                    </select>
+                </div>
+            </div>
+            <div class="forecast-section" id="forecast-container">
+                <h2 id="forecast-title" data-i18n="weather.weeklyForecast">7-Day Forecast</h2>
+                <div id="forecast-content"></div>
+            </div>
+        </div>
+    </div>
+
+    {% if user.is_authenticated %}
+    <!-- Floating Plant Tracking mini widget -->
+    <div class="plant-widget" aria-live="polite">
+        <div class="plant-widget-inner">
+            <!-- Plant bubble on top -->
+            <div class="glass-bubble" aria-hidden="true">
+                <div class="bubble-inner">
+                    <img id="mini-stage-1" class="plant-stage" alt="Seed" src="{{ url_for('static', filename='plant_tracking/assets/seed.png') }}" />
+                    <img id="mini-stage-2" class="plant-stage" alt="Seedling" src="{{ url_for('static', filename='plant_tracking/assets/seedling.png') }}" />
+                    <img id="mini-stage-3" class="plant-stage" alt="Small plant" src="{{ url_for('static', filename='plant_tracking/assets/small-plant.png') }}" />
+                    <img id="mini-stage-4" class="plant-stage" alt="Small plant grown" src="{{ url_for('static', filename='plant_tracking/assets/small-plant-grown.png') }}" />
+                    <img id="mini-stage-5" class="plant-stage" alt="Grown plant" src="{{ url_for('static', filename='plant_tracking/assets/grown.png') }}" />
+                    <img id="mini-stage-6" class="plant-stage" alt="Fully grown with flowers" src="{{ url_for('static', filename='plant_tracking/assets/fully-grown-flower.png') }}" />
+                    <div class="soil-shadow"></div>
+                </div>
+                <div class="bubble-gloss"></div>
+                <div class="bubble-caustics"></div>
+            </div>
+
+            <!-- No fold button needed - hover to unfold -->
+            
+            <!-- Open Tracker button - visible when folded (under bubble) -->
+            <a class="mini-btn widget-tracker-btn-folded" href="{{ url_for('plant_tracking') }}" data-i18n="plant.openTracker">Open Tracker</a>
+
+            <!-- Panel content (hidden when folded) -->
+            <div class="panel-content">
+                <div class="plant-mini-details">
+                    <div class="mini-row">
+                        <strong id="mini-plant-name">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span data-i18n="plant.age">Age</span><strong id="mini-age-days">—</strong>
+                        <span style="margin-left:10px;" data-i18n="plant.stage">Stage</span><strong id="mini-stage-name">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span data-i18n="plant.nextMilestone">Next</span><strong id="mini-next-milestone">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span>Temp</span><strong id="mini-temp">—</strong>
+                        <span style="margin-left:10px;">Hum</span><strong id="mini-humidity">—</strong>
+                    </div>
+                    
+                    <!-- Essential sections -->
+                    <div class="mini-section">
+                        <h4>Essential Tasks</h4>
+                        <ul id="mini-treatments" class="mini-treatments"></ul>
+                    </div>
+                    
+                    <div class="mini-section">
+                        <h4>Your Todos</h4>
+                        <form id="mini-todo-form" class="mini-todo-form">
+                            <input id="mini-todo-input" type="text" placeholder="Add task..." />
+                            <button type="submit">+</button>
+                        </form>
+                        <!-- Open Tracker button -->
+                        <a class="mini-btn widget-tracker-btn" href="{{ url_for('plant_tracking') }}">Open Tracker</a>
+                        <ul id="mini-todo-list" class="mini-todo-list"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='plant_tracking/app.js') }}"></script>
+    {% endif %}
+
+    <!-- Location Access Modal -->
+    <div id="location-modal" class="location-modal">
+        <div class="location-modal-content">
+            <h3><i class="fas fa-map-marker-alt"></i> <span data-i18n="weather.locationAccessRequired">Location Access Required</span></h3>
+            <p data-i18n="weather.locationAccessMessage">To provide accurate weather information for your current location, we need access to your device's location.</p>
+            <p data-i18n="weather.locationPrivacyMessage">Your location data is only used for weather services and is not stored or shared.</p>
+            <div class="location-modal-buttons">
+                <button class="btn-allow" onclick="allowLocationAccess()" data-i18n="weather.allowLocationAccess">Allow Location Access</button>
+                <button class="btn-cancel" onclick="cancelLocationAccess()" data-i18n="common.cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Sub-areas within cities - Farming and Agricultural Zones (within 5-15km radius of main city)
+        const subAreas = {
+            "Anuradhapura": [
+                { name: "Thanthirimale Farming Zone", lat: 8.2500, lon: 80.3500 },
+                { name: "Rajarata Paddy Fields", lat: 8.3000, lon: 80.4000 },
+                { name: "Malwathu Oya Agricultural Area", lat: 8.2800, lon: 80.4200 },
+                { name: "Kala Wewa Farming Zone", lat: 8.2000, lon: 80.3500 },
+                { name: "Nachchaduwa Agricultural Area", lat: 8.3500, lon: 80.4500 },
+                { name: "Tissa Wewa Paddy Fields", lat: 8.3000, lon: 80.4000 },
+                { name: "Basawakkulama Farming Zone", lat: 8.3200, lon: 80.4100 },
+                { name: "Nuwarawewa Agricultural Area", lat: 8.3300, lon: 80.4200 },
+                { name: "Sembukuttuwa Farming Zone", lat: 8.2800, lon: 80.3800 },
+                { name: "Padaviya Agricultural Zone", lat: 8.6667, lon: 80.7500 },
+                { name: "Kawudulla Farming Area", lat: 8.2500, lon: 80.5000 },
+                { name: "Kebithigollawa Agricultural Zone", lat: 8.6000, lon: 80.8500 }
+            ],
+            "Mihintale": [
+                { name: "Mihintale Agricultural Zone", lat: 8.3500, lon: 80.5167 },
+                { name: "Kantaka Farming Area", lat: 8.3450, lon: 80.5150 },
+                { name: "Mihintale Paddy Fields", lat: 8.3400, lon: 80.5100 },
+                { name: "Rajanganaya Farming Zone", lat: 8.3667, lon: 80.5333 },
+                { name: "Kalawewa Agricultural Area", lat: 8.2000, lon: 80.3500 },
+                { name: "Mahakanadarawa Farming Zone", lat: 8.3833, lon: 80.5500 },
+                { name: "Nachchaduwa Agricultural Zone", lat: 8.3500, lon: 80.4500 }
+            ],
+            "Kekirawa": [
+                { name: "Kekirawa Paddy Fields", lat: 8.0333, lon: 80.5833 },
+                { name: "Palugaswewa Farming Zone", lat: 8.0500, lon: 80.6000 },
+                { name: "Thambuttegama Agricultural Area", lat: 8.0167, lon: 80.5667 },
+                { name: "Nochchiyagama Farming Zone", lat: 8.1000, lon: 80.6500 },
+                { name: "Ganewalpola Agricultural Area", lat: 8.0876, lon: 80.6279 },
+                { name: "Palugaswewa Paddy Fields", lat: 8.0500, lon: 80.6000 },
+                { name: "Kekirawa Vegetable Zone", lat: 8.0400, lon: 80.5900 },
+                { name: "Thambuttegama Farming Area", lat: 8.0167, lon: 80.5667 }
+            ],
+            "Polonnaruwa": [
+                { name: "Parakrama Samudra Agricultural Zone", lat: 7.9200, lon: 81.0000 },
+                { name: "Minneriya Farming Area", lat: 7.9833, lon: 80.7833 },
+                { name: "Kaudulla Agricultural Zone", lat: 8.0833, lon: 80.8000 },
+                { name: "Giritale Farming Zone", lat: 7.9667, lon: 81.0167 },
+                { name: "Topa Wewa Agricultural Area", lat: 7.9500, lon: 81.0000 },
+                { name: "Elahera Farming Zone", lat: 7.8500, lon: 80.9500 },
+                { name: "Dimbulagala Agricultural Zone", lat: 7.9000, lon: 81.0500 },
+                { name: "Sungawila Farming Area", lat: 7.9167, lon: 81.0333 },
+                { name: "Welikanda Agricultural Zone", lat: 7.8333, lon: 81.1167 },
+                { name: "Medirigiriya Farming Zone", lat: 7.9833, lon: 81.0833 }
+            ],
+            "Colombo": [
+                { name: "Kelaniya Vegetable Farming Zone", lat: 6.9500, lon: 79.9167 },
+                { name: "Attidiya Paddy Fields", lat: 6.8500, lon: 79.8833 },
+                { name: "Borella Agricultural Area", lat: 6.9167, lon: 79.8667 },
+                { name: "Kotte Farming Zone", lat: 6.9000, lon: 79.9000 },
+                { name: "Kolonnawa Vegetable Zone", lat: 6.9333, lon: 79.9000 },
+                { name: "Maharagama Agricultural Area", lat: 6.8500, lon: 79.9167 },
+                { name: "Kaduwela Farming Zone", lat: 6.9333, lon: 80.0167 },
+                { name: "Homagama Agricultural Zone", lat: 6.8333, lon: 80.0000 },
+                { name: "Piliyandala Vegetable Farming", lat: 6.8000, lon: 79.9167 },
+                { name: "Kesbewa Agricultural Area", lat: 6.8167, lon: 79.9333 },
+                { name: "Thalangama Farming Zone", lat: 6.8833, lon: 79.9500 },
+                { name: "Athurugiriya Agricultural Zone", lat: 6.9000, lon: 79.9833 }
+            ],
+            "Gampaha": [
+                { name: "Gampaha Paddy Fields", lat: 7.0917, lon: 79.9997 },
+                { name: "Nittambuwa Farming Zone", lat: 7.1333, lon: 80.0167 },
+                { name: "Veyangoda Agricultural Area", lat: 7.1500, lon: 80.0500 },
+                { name: "Mirigama Vegetable Zone", lat: 7.2500, lon: 80.1167 },
+                { name: "Wattala Agricultural Zone", lat: 6.9833, lon: 79.8833 },
+                { name: "Ja-Ela Farming Area", lat: 7.0833, lon: 79.9167 },
+                { name: "Seeduwa Vegetable Zone", lat: 7.1167, lon: 79.8833 },
+                { name: "Katunayake Agricultural Area", lat: 7.1667, lon: 79.8833 },
+                { name: "Divulapitiya Farming Zone", lat: 7.2167, lon: 80.0500 },
+                { name: "Minuwangoda Agricultural Zone", lat: 7.1667, lon: 80.1333 },
+                { name: "Biyagama Farming Area", lat: 7.0333, lon: 80.0167 },
+                { name: "Dompe Agricultural Zone", lat: 7.1167, lon: 80.0833 }
+            ],
+            "Kalutara": [
+                { name: "Kalutara Coconut Plantations", lat: 6.5833, lon: 79.9667 },
+                { name: "Beruwala Spice Gardens", lat: 6.4833, lon: 79.9833 },
+                { name: "Alutgama Agricultural Zone", lat: 6.5500, lon: 79.9833 },
+                { name: "Wadduwa Farming Area", lat: 6.6500, lon: 79.9333 },
+                { name: "Matugama Agricultural Zone", lat: 6.5167, lon: 80.1167 },
+                { name: "Horana Farming Zone", lat: 6.7167, lon: 80.0500 },
+                { name: "Bandaragama Agricultural Area", lat: 6.6833, lon: 79.9833 },
+                { name: "Millaniya Farming Zone", lat: 6.6333, lon: 80.0167 },
+                { name: "Bulathsinhala Agricultural Zone", lat: 6.6667, lon: 80.0833 },
+                { name: "Agalawatta Farming Area", lat: 6.5500, lon: 80.1500 },
+                { name: "Palindanuwara Agricultural Zone", lat: 6.5000, lon: 80.2000 },
+                { name: "Dodangoda Farming Zone", lat: 6.6000, lon: 80.0500 }
+            ],
+            "Negombo": [
+                { name: "Negombo Vegetable Farming", lat: 7.2083, lon: 79.8358 },
+                { name: "Katana Paddy Fields", lat: 7.2500, lon: 79.8667 },
+                { name: "Kochchikade Agricultural Zone", lat: 7.2167, lon: 79.8500 },
+                { name: "Dankotuwa Farming Zone", lat: 7.2833, lon: 79.8667 },
+                { name: "Maha Oya Agricultural Area", lat: 7.3000, lon: 79.8833 },
+                { name: "Waikkal Farming Zone", lat: 7.2667, lon: 79.8500 },
+                { name: "Kandana Agricultural Zone", lat: 7.0500, lon: 79.8833 },
+                { name: "Ragama Farming Area", lat: 7.0333, lon: 79.9167 }
+            ],
+            "Moratuwa": [
+                { name: "Moratuwa Vegetable Zone", lat: 6.7733, lon: 79.8825 },
+                { name: "Koralawella Farming Area", lat: 6.7500, lon: 79.9000 },
+                { name: "Lunawa Agricultural Zone", lat: 6.7833, lon: 79.8667 },
+                { name: "Rawatawatta Farming Area", lat: 6.7667, lon: 79.8833 },
+                { name: "Egoda Uyana Agricultural Zone", lat: 6.8000, lon: 79.8833 }
+            ],
+            "Panadura": [
+                { name: "Panadura Agricultural Zone", lat: 6.7167, lon: 79.9000 },
+                { name: "Wadduwa Farming Area", lat: 6.6500, lon: 79.9333 },
+                { name: "Pinwatta Vegetable Zone", lat: 6.7000, lon: 79.9167 },
+                { name: "Koralawella Agricultural Area", lat: 6.7500, lon: 79.9000 },
+                { name: "Katukurunda Farming Zone", lat: 6.6833, lon: 79.8833 }
+            ],
+            "Kandy": [
+                { name: "Peradeniya Botanical Gardens", lat: 7.2667, lon: 80.6000 },
+                { name: "Kandy Vegetable Farming Zone", lat: 7.2906, lon: 80.6337 },
+                { name: "Katugastota Agricultural Area", lat: 7.3167, lon: 80.6167 },
+                { name: "Udapussellawa Tea Plantations", lat: 7.2000, lon: 80.5833 },
+                { name: "Mahaiyawa Farming Zone", lat: 7.2833, lon: 80.6500 },
+                { name: "Akurana Agricultural Zone", lat: 7.3333, lon: 80.6333 },
+                { name: "Pilimatalawa Farming Area", lat: 7.2500, lon: 80.6000 },
+                { name: "Kundasale Vegetable Zone", lat: 7.2667, lon: 80.6833 },
+                { name: "Wattegama Agricultural Area", lat: 7.3500, lon: 80.6833 },
+                { name: "Teldeniya Farming Zone", lat: 7.3000, lon: 80.7000 },
+                { name: "Harispattuwa Agricultural Zone", lat: 7.2833, lon: 80.6500 },
+                { name: "Yatinuwara Farming Area", lat: 7.3167, lon: 80.6667 }
+            ],
+            "Nuwara Eliya": [
+                { name: "Nuwara Eliya Vegetable Zone", lat: 6.9497, lon: 80.7891 },
+                { name: "Hakgala Botanical Gardens", lat: 6.9167, lon: 80.8167 },
+                { name: "Pedro Tea Estate", lat: 6.9667, lon: 80.8000 },
+                { name: "Labookellie Tea Plantation", lat: 6.9833, lon: 80.7500 },
+                { name: "Ramboda Tea Plantations", lat: 7.0333, lon: 80.7000 },
+                { name: "Kandapola Farming Zone", lat: 6.9833, lon: 80.8333 },
+                { name: "Moon Plains Agricultural Area", lat: 6.9667, lon: 80.8167 },
+                { name: "Seetha Eliya Vegetable Zone", lat: 6.9333, lon: 80.8000 },
+                { name: "Ginigathhena Agricultural Zone", lat: 7.0167, lon: 80.7500 },
+                { name: "Nanu Oya Farming Area", lat: 6.9167, lon: 80.7833 }
+            ],
+            "Matale": [
+                { name: "Matale Spice Gardens", lat: 7.4675, lon: 80.6234 },
+                { name: "Aluvihare Agricultural Zone", lat: 7.4833, lon: 80.6000 },
+                { name: "Rattota Vegetable Farming", lat: 7.5167, lon: 80.6667 },
+                { name: "Palapathwela Paddy Fields", lat: 7.4500, lon: 80.6500 },
+                { name: "Ukuwela Farming Zone", lat: 7.4000, lon: 80.6333 },
+                { name: "Dambulla Agricultural Area", lat: 7.8667, lon: 80.6500 },
+                { name: "Naula Farming Zone", lat: 7.7000, lon: 80.6167 },
+                { name: "Laggala Agricultural Zone", lat: 7.5833, lon: 80.7000 },
+                { name: "Wilgamuwa Farming Area", lat: 7.5167, lon: 80.7500 },
+                { name: "Pallepola Agricultural Zone", lat: 7.4333, lon: 80.5833 }
+            ],
+            "Hatton": [
+                { name: "Hatton Tea Plantations", lat: 6.8917, lon: 80.5958 },
+                { name: "Dickoya Tea Estate", lat: 6.8667, lon: 80.6167 },
+                { name: "Nanuoya Vegetable Zone", lat: 6.9167, lon: 80.5833 },
+                { name: "Norwood Tea Estate", lat: 6.8833, lon: 80.6000 },
+                { name: "Radella Agricultural Zone", lat: 6.9000, lon: 80.6167 },
+                { name: "Kotagala Farming Area", lat: 6.9167, lon: 80.6167 },
+                { name: "Maskeliya Tea Plantations", lat: 6.8500, lon: 80.5667 },
+                { name: "Upcot Agricultural Zone", lat: 6.8667, lon: 80.5833 }
+            ],
+            "Gampola": [
+                { name: "Gampola Tea Plantations", lat: 7.1667, lon: 80.5667 },
+                { name: "Udapussellawa Tea Estate", lat: 7.2000, lon: 80.5833 },
+                { name: "Nawalapitiya Agricultural Zone", lat: 7.0500, lon: 80.5333 },
+                { name: "Hewaheta Farming Zone", lat: 7.1833, lon: 80.5500 },
+                { name: "Yatinuwara Agricultural Area", lat: 7.3167, lon: 80.6667 },
+                { name: "Harispattuwa Farming Zone", lat: 7.2833, lon: 80.6500 },
+                { name: "Poojapitiya Agricultural Zone", lat: 7.1333, lon: 80.5333 },
+                { name: "Doluwa Farming Area", lat: 7.1500, lon: 80.5833 }
+            ],
+            "Ratnapura": [
+                { name: "Ratnapura Gem Mining & Farming", lat: 6.6828, lon: 80.4011 },
+                { name: "Eheliyagoda Agricultural Zone", lat: 6.8500, lon: 80.2667 },
+                { name: "Pelmadulla Farming Area", lat: 6.6167, lon: 80.5167 },
+                { name: "Kuruwita Vegetable Zone", lat: 6.7833, lon: 80.3667 },
+                { name: "Balangoda Paddy Fields", lat: 6.6500, lon: 80.7000 },
+                { name: "Godakawela Agricultural Zone", lat: 6.5833, lon: 80.4500 },
+                { name: "Nivithigala Farming Area", lat: 6.6167, lon: 80.3333 },
+                { name: "Ayagama Agricultural Zone", lat: 6.7000, lon: 80.3333 },
+                { name: "Kalawana Farming Zone", lat: 6.5333, lon: 80.3833 },
+                { name: "Kolonna Agricultural Area", lat: 6.6500, lon: 80.2833 },
+                { name: "Weligepola Farming Zone", lat: 6.7500, lon: 80.3167 },
+                { name: "Rakwana Agricultural Zone", lat: 6.4667, lon: 80.5167 }
+            ],
+            "Kegalle": [
+                { name: "Kegalle Rubber Plantations", lat: 7.2500, lon: 80.3500 },
+                { name: "Mawanella Agricultural Zone", lat: 7.2500, lon: 80.4500 },
+                { name: "Rambukkana Farming Area", lat: 7.3167, lon: 80.3167 },
+                { name: "Warakapola Vegetable Zone", lat: 7.1833, lon: 80.2833 },
+                { name: "Galigamuwa Agricultural Zone", lat: 7.2167, lon: 80.2833 },
+                { name: "Aranayaka Farming Area", lat: 7.1833, lon: 80.4000 },
+                { name: "Bulathkohupitiya Agricultural Zone", lat: 7.1167, lon: 80.3000 },
+                { name: "Deraniyagala Farming Zone", lat: 7.0333, lon: 80.3333 },
+                { name: "Ruwanwella Agricultural Area", lat: 7.0500, lon: 80.2500 },
+                { name: "Yatiyantota Farming Zone", lat: 7.0167, lon: 80.2833 }
+            ],
+            "Balangoda": [
+                { name: "Balangoda Paddy Fields", lat: 6.6500, lon: 80.7000 },
+                { name: "Kahawatta Tea Plantations", lat: 6.5833, lon: 80.5833 },
+                { name: "Opanayaka Agricultural Zone", lat: 6.7167, lon: 80.7500 },
+                { name: "Imbulpe Farming Zone", lat: 6.6833, lon: 80.8000 },
+                { name: "Pelmadulla Agricultural Area", lat: 6.6167, lon: 80.5167 },
+                { name: "Suriyakanda Farming Zone", lat: 6.6000, lon: 80.6667 },
+                { name: "Hidellana Agricultural Zone", lat: 6.6333, lon: 80.6333 },
+                { name: "Weligepola Farming Area", lat: 6.7500, lon: 80.3167 }
+            ],
+            "Avissawella": [
+                { name: "Avissawella Rubber Plantations", lat: 6.9500, lon: 80.2167 },
+                { name: "Yatiyantota Farming Zone", lat: 7.0167, lon: 80.2833 },
+                { name: "Kitulgala Agricultural Area", lat: 6.9833, lon: 80.4167 },
+                { name: "Ruwanwella Farming Zone", lat: 7.0500, lon: 80.2500 },
+                { name: "Deraniyagala Agricultural Zone", lat: 7.0333, lon: 80.3333 },
+                { name: "Nawalapitiya Farming Area", lat: 7.0500, lon: 80.5333 },
+                { name: "Glencourse Agricultural Zone", lat: 6.9667, lon: 80.3000 },
+                { name: "Kosgama Farming Area", lat: 6.9167, lon: 80.2000 }
+            ],
+            "Galle": [
+                { name: "Galle Coconut Plantations", lat: 6.0329, lon: 80.2170 },
+                { name: "Unawatuna Spice Gardens", lat: 6.0167, lon: 80.2500 },
+                { name: "Hikkaduwa Agricultural Zone", lat: 6.1333, lon: 80.1000 },
+                { name: "Ambalangoda Farming Area", lat: 6.2333, lon: 80.0500 },
+                { name: "Dodanduwa Vegetable Zone", lat: 6.1000, lon: 80.1333 },
+                { name: "Bentota Agricultural Zone", lat: 6.4167, lon: 80.0000 },
+                { name: "Kosgoda Farming Area", lat: 6.3333, lon: 80.0333 },
+                { name: "Ahangama Agricultural Zone", lat: 5.9833, lon: 80.3500 },
+                { name: "Koggala Farming Zone", lat: 5.9833, lon: 80.3167 },
+                { name: "Thalpe Agricultural Area", lat: 5.9833, lon: 80.2333 },
+                { name: "Udugama Farming Zone", lat: 6.2000, lon: 80.3167 },
+                { name: "Neluwa Agricultural Zone", lat: 6.3500, lon: 80.3167 },
+                { name: "Yakkalamulla Farming Area", lat: 6.1167, lon: 80.2833 }
+            ],
+            "Matara": [
+                { name: "Matara Coconut Plantations", lat: 5.9549, lon: 80.5550 },
+                { name: "Dikwella Farming Zone", lat: 5.9667, lon: 80.6833 },
+                { name: "Hakmana Agricultural Area", lat: 6.0833, lon: 80.5833 },
+                { name: "Weligama Vegetable Zone", lat: 5.9750, lon: 80.4292 },
+                { name: "Akuressa Agricultural Zone", lat: 6.1000, lon: 80.4667 },
+                { name: "Kamburupitiya Farming Area", lat: 6.0667, lon: 80.5667 },
+                { name: "Kotapola Agricultural Zone", lat: 6.1333, lon: 80.5167 },
+                { name: "Pitabeddara Farming Zone", lat: 6.1833, lon: 80.5500 },
+                { name: "Deniyaya Agricultural Area", lat: 6.3500, lon: 80.5500 },
+                { name: "Morawaka Farming Zone", lat: 6.2500, lon: 80.4833 },
+                { name: "Kotawila Agricultural Zone", lat: 6.0167, lon: 80.5000 },
+                { name: "Devinuwara Farming Area", lat: 5.9333, lon: 80.5833 }
+            ],
+            "Hambantota": [
+                { name: "Hambantota Agricultural Zone", lat: 6.1244, lon: 81.1186 },
+                { name: "Tissamaharama Paddy Fields", lat: 6.2833, lon: 81.2833 },
+                { name: "Kataragama Farming Area", lat: 6.4167, lon: 81.3333 },
+                { name: "Kirinda Agricultural Zone", lat: 6.0833, lon: 81.2000 },
+                { name: "Weerawila Farming Zone", lat: 6.2167, lon: 81.2333 },
+                { name: "Lunugamwehera Agricultural Area", lat: 6.3500, lon: 81.2500 },
+                { name: "Sooriyawewa Farming Zone", lat: 6.2833, lon: 81.2000 },
+                { name: "Angunakolapelessa Agricultural Zone", lat: 6.1667, lon: 81.0833 },
+                { name: "Beliatta Farming Area", lat: 6.0500, lon: 80.7333 },
+                { name: "Walasmulla Agricultural Zone", lat: 6.1333, lon: 80.6667 },
+                { name: "Katuwana Farming Zone", lat: 6.2000, lon: 80.7000 }
+            ],
+            "Weligama": [
+                { name: "Weligama Coconut Plantations", lat: 5.9750, lon: 80.4292 },
+                { name: "Mirissa Spice Gardens", lat: 5.9500, lon: 80.4667 },
+                { name: "Polhena Agricultural Zone", lat: 5.9833, lon: 80.4000 },
+                { name: "Koggala Farming Area", lat: 5.9833, lon: 80.3167 },
+                { name: "Ahangama Agricultural Zone", lat: 5.9833, lon: 80.3500 },
+                { name: "Kataluwa Farming Zone", lat: 5.9667, lon: 80.4167 }
+            ],
+            "Tangalle": [
+                { name: "Tangalle Agricultural Zone", lat: 6.0233, lon: 80.7917 },
+                { name: "Rekawa Farming Area", lat: 6.0000, lon: 80.8333 },
+                { name: "Medilla Vegetable Zone", lat: 6.0500, lon: 80.7667 },
+                { name: "Beliatta Agricultural Zone", lat: 6.0500, lon: 80.7333 },
+                { name: "Walasmulla Farming Area", lat: 6.1333, lon: 80.6667 },
+                { name: "Katuwana Farming Zone", lat: 6.2000, lon: 80.7000 },
+                { name: "Nakulugamuwa Agricultural Zone", lat: 6.0833, lon: 80.8000 }
+            ],
+            "Badulla": [
+                { name: "Badulla Vegetable Farming", lat: 6.9934, lon: 81.0550 },
+                { name: "Passara Tea Plantations", lat: 6.9333, lon: 81.1667 },
+                { name: "Mahiyanganaya Agricultural Zone", lat: 7.3333, lon: 81.0167 },
+                { name: "Welimada Farming Area", lat: 6.9167, lon: 81.0167 },
+                { name: "Haputale Tea Estate", lat: 6.7667, lon: 80.9667 },
+                { name: "Ella Agricultural Zone", lat: 6.8667, lon: 81.0500 },
+                { name: "Diyatalawa Farming Area", lat: 6.8000, lon: 80.9667 },
+                { name: "Hali-Ela Agricultural Zone", lat: 7.0167, lon: 81.0333 },
+                { name: "Meegahakivula Farming Zone", lat: 7.0833, lon: 81.0833 },
+                { name: "Kandaketiya Agricultural Area", lat: 7.1500, lon: 81.1000 },
+                { name: "Lunugala Farming Zone", lat: 7.2000, lon: 81.0167 },
+                { name: "Soranathota Agricultural Zone", lat: 7.0833, lon: 81.0167 }
+            ],
+            "Monaragala": [
+                { name: "Monaragala Agricultural Zone", lat: 6.8667, lon: 81.3500 },
+                { name: "Bibile Farming Area", lat: 7.0833, lon: 81.2167 },
+                { name: "Wellawaya Paddy Fields", lat: 6.7333, lon: 81.1000 },
+                { name: "Siyambalanduwa Agricultural Zone", lat: 7.2000, lon: 81.5000 },
+                { name: "Madulla Farming Area", lat: 7.0167, lon: 81.4000 },
+                { name: "Thanamalwila Agricultural Zone", lat: 6.4167, lon: 81.1333 },
+                { name: "Kataragama Farming Zone", lat: 6.4167, lon: 81.3333 },
+                { name: "Buttala Agricultural Area", lat: 6.7500, lon: 81.2333 },
+                { name: "Medagama Farming Zone", lat: 6.9500, lon: 81.2833 },
+                { name: "Sevanagala Agricultural Zone", lat: 6.8333, lon: 81.2667 }
+            ],
+            "Bandarawela": [
+                { name: "Bandarawela Vegetable Zone", lat: 6.8333, lon: 80.9833 },
+                { name: "Ella Tea Plantations", lat: 6.8667, lon: 81.0500 },
+                { name: "Diyatalawa Agricultural Area", lat: 6.8000, lon: 80.9667 },
+                { name: "Koslanda Farming Zone", lat: 6.7833, lon: 81.0167 },
+                { name: "Haputale Agricultural Zone", lat: 6.7667, lon: 80.9667 },
+                { name: "Beragala Farming Area", lat: 6.8167, lon: 81.0000 },
+                { name: "Poonagala Agricultural Zone", lat: 6.8500, lon: 81.0333 },
+                { name: "Demodara Farming Zone", lat: 6.8833, lon: 81.0167 }
+            ],
+            "Haputale": [
+                { name: "Haputale Tea Plantations", lat: 6.7667, lon: 80.9667 },
+                { name: "Lipton's Seat Tea Estate", lat: 6.7833, lon: 80.9833 },
+                { name: "Dambatenne Tea Garden", lat: 6.7500, lon: 80.9500 },
+                { name: "Idalgashinna Agricultural Zone", lat: 6.7333, lon: 80.9833 },
+                { name: "Beragala Farming Area", lat: 6.8167, lon: 81.0000 },
+                { name: "Poonagala Agricultural Zone", lat: 6.8500, lon: 81.0333 },
+                { name: "Koslanda Farming Zone", lat: 6.7833, lon: 81.0167 },
+                { name: "Thangamale Agricultural Area", lat: 6.7500, lon: 80.9333 }
+            ],
+            "Batticaloa": [
+                { name: "Batticaloa Paddy Fields", lat: 7.7102, lon: 81.6924 },
+                { name: "Kalkudah Agricultural Zone", lat: 7.9167, lon: 81.5500 },
+                { name: "Valaichenai Farming Area", lat: 7.9167, lon: 81.6833 },
+                { name: "Pasikudah Vegetable Zone", lat: 7.9333, lon: 81.5667 },
+                { name: "Chenkalady Farming Zone", lat: 7.7333, lon: 81.6167 },
+                { name: "Kiran Agricultural Area", lat: 7.6833, lon: 81.6333 },
+                { name: "Vakarai Farming Zone", lat: 8.1333, lon: 81.4333 },
+                { name: "Puliyanthivu Agricultural Zone", lat: 7.7167, lon: 81.7000 },
+                { name: "Kattankudy Farming Area", lat: 7.6833, lon: 81.7167 },
+                { name: "Eravur Agricultural Zone", lat: 7.7667, lon: 81.6000 }
+            ],
+            "Trincomalee": [
+                { name: "Trincomalee Agricultural Zone", lat: 8.5874, lon: 81.2152 },
+                { name: "Nilaveli Farming Area", lat: 8.6667, lon: 81.2167 },
+                { name: "Uppuveli Vegetable Zone", lat: 8.6000, lon: 81.2333 },
+                { name: "Koneswaram Agricultural Area", lat: 8.5833, lon: 81.2333 },
+                { name: "Kuchchaveli Farming Zone", lat: 8.7500, lon: 81.2000 },
+                { name: "Kantalai Agricultural Area", lat: 8.3833, lon: 81.0167 },
+                { name: "Gomarankadawala Farming Zone", lat: 8.5000, lon: 81.0833 },
+                { name: "Morawewa Agricultural Zone", lat: 8.4167, lon: 81.1167 },
+                { name: "Seruwila Farming Area", lat: 8.3500, lon: 81.3000 },
+                { name: "Kinniya Agricultural Zone", lat: 8.5167, lon: 81.1833 }
+            ],
+            "Ampara": [
+                { name: "Ampara Paddy Fields", lat: 7.2833, lon: 81.6667 },
+                { name: "Samanthurai Agricultural Zone", lat: 7.2500, lon: 81.7000 },
+                { name: "Akkaraipattu Farming Area", lat: 7.2167, lon: 81.8500 },
+                { name: "Pottuvil Agricultural Zone", lat: 6.8667, lon: 81.8333 },
+                { name: "Lahugala Farming Area", lat: 7.1833, lon: 81.7500 },
+                { name: "Uhana Agricultural Zone", lat: 7.3667, lon: 81.6167 },
+                { name: "Damana Farming Zone", lat: 7.3167, lon: 81.5833 },
+                { name: "Maha Oya Agricultural Area", lat: 7.2500, lon: 81.5500 },
+                { name: "Navithanveli Farming Zone", lat: 7.3333, lon: 81.7000 },
+                { name: "Irakkamam Agricultural Zone", lat: 7.2000, lon: 81.8000 }
+            ],
+            "Kalmunai": [
+                { name: "Kalmunai Agricultural Zone", lat: 7.4167, lon: 81.8167 },
+                { name: "Karaitivu Farming Area", lat: 7.3667, lon: 81.8333 },
+                { name: "Sainthamaruthu Vegetable Zone", lat: 7.4500, lon: 81.8000 },
+                { name: "Ninthavur Farming Zone", lat: 7.3833, lon: 81.8500 },
+                { name: "Addalaichenai Agricultural Area", lat: 7.3167, lon: 81.8500 },
+                { name: "Alayadi Vembu Farming Zone", lat: 7.4833, lon: 81.7833 },
+                { name: "Maruthamunai Agricultural Zone", lat: 7.4333, lon: 81.8333 },
+                { name: "Periyaneelavanai Farming Area", lat: 7.4000, lon: 81.8167 }
+            ],
+            "Jaffna": [
+                { name: "Jaffna Vegetable Farming", lat: 9.6615, lon: 80.0255 },
+                { name: "Nallur Agricultural Zone", lat: 9.6667, lon: 80.0333 },
+                { name: "Chavakachcheri Farming Area", lat: 9.6667, lon: 80.1167 },
+                { name: "Point Pedro Agricultural Zone", lat: 9.8167, lon: 80.2333 },
+                { name: "Kankesanthurai Vegetable Zone", lat: 9.8000, lon: 80.0500 },
+                { name: "Vaddukoddai Farming Zone", lat: 9.7333, lon: 80.0167 },
+                { name: "Tellippalai Agricultural Area", lat: 9.7667, lon: 80.0333 },
+                { name: "Uduvil Farming Zone", lat: 9.7000, lon: 80.0167 },
+                { name: "Kopay Agricultural Zone", lat: 9.6833, lon: 80.0500 },
+                { name: "Maruthankerny Farming Area", lat: 9.7167, lon: 80.0833 },
+                { name: "Karainagar Agricultural Zone", lat: 9.7500, lon: 79.8833 },
+                { name: "Kayts Farming Zone", lat: 9.6667, lon: 79.9167 }
+            ],
+            "Vavuniya": [
+                { name: "Vavuniya Agricultural Zone", lat: 8.7500, lon: 80.5000 },
+                { name: "Omanthai Farming Area", lat: 8.8333, lon: 80.5167 },
+                { name: "Medawachchiya Paddy Fields", lat: 8.5333, lon: 80.3167 },
+                { name: "Cheddikulam Farming Zone", lat: 8.8333, lon: 80.4500 },
+                { name: "Nedunkeni Agricultural Area", lat: 8.9167, lon: 80.5167 },
+                { name: "Puliyankulam Farming Zone", lat: 8.8000, lon: 80.4333 },
+                { name: "Poovarasankulam Agricultural Zone", lat: 8.7667, lon: 80.4667 }
+            ],
+            "Kilinochchi": [
+                { name: "Kilinochchi Agricultural Zone", lat: 9.4000, lon: 80.4000 },
+                { name: "Paranthan Farming Area", lat: 9.4333, lon: 80.4167 },
+                { name: "Pallai Vegetable Zone", lat: 9.5167, lon: 80.3500 },
+                { name: "Poonakary Farming Zone", lat: 9.5000, lon: 80.2000 },
+                { name: "Iranamadu Agricultural Area", lat: 9.3500, lon: 80.3833 },
+                { name: "Kandawalai Farming Zone", lat: 9.4500, lon: 80.4167 },
+                { name: "Akkarayankulam Agricultural Zone", lat: 9.3667, lon: 80.3667 }
+            ],
+            "Mullaitivu": [
+                { name: "Mullaitivu Agricultural Zone", lat: 9.2667, lon: 80.8167 },
+                { name: "Puthukkudiyiruppu Farming Area", lat: 9.2833, lon: 80.8333 },
+                { name: "Oddusuddan Vegetable Zone", lat: 9.2000, lon: 80.7500 },
+                { name: "Kokkilai Farming Zone", lat: 9.1167, lon: 80.8333 },
+                { name: "Alampil Agricultural Area", lat: 9.1500, lon: 80.8000 },
+                { name: "Thunukkai Farming Zone", lat: 9.1833, lon: 80.7667 },
+                { name: "Mulliyawalai Agricultural Zone", lat: 9.2333, lon: 80.7833 }
+            ],
+            "Kurunegala": [
+                { name: "Kurunegala Paddy Fields", lat: 7.4833, lon: 80.3667 },
+                { name: "Mawathagama Agricultural Zone", lat: 7.4167, lon: 80.4500 },
+                { name: "Ibbagamuwa Farming Area", lat: 7.5500, lon: 80.4000 },
+                { name: "Kuliyapitiya Vegetable Zone", lat: 7.4667, lon: 80.0500 },
+                { name: "Nikaweratiya Agricultural Area", lat: 7.7000, lon: 80.1167 },
+                { name: "Panduwasnuwara Farming Zone", lat: 7.6000, lon: 80.1167 },
+                { name: "Rideegama Agricultural Area", lat: 7.5500, lon: 80.2833 },
+                { name: "Giriulla Farming Zone", lat: 7.3333, lon: 80.2500 },
+                { name: "Dambadeniya Agricultural Zone", lat: 7.3667, lon: 80.1500 },
+                { name: "Bingiriya Farming Area", lat: 7.5167, lon: 80.0833 },
+                { name: "Wariyapola Agricultural Zone", lat: 7.6167, lon: 80.2833 },
+                { name: "Ganewatta Farming Zone", lat: 7.4333, lon: 80.3167 }
+            ],
+            "Puttalam": [
+                { name: "Puttalam Coconut Plantations", lat: 8.0333, lon: 79.8333 },
+                { name: "Chilaw Agricultural Zone", lat: 7.5750, lon: 79.7958 },
+                { name: "Wennappuwa Farming Area", lat: 7.3500, lon: 79.8500 },
+                { name: "Anamaduwa Agricultural Zone", lat: 8.0333, lon: 79.9167 },
+                { name: "Nattandiya Farming Area", lat: 7.2167, lon: 79.8667 },
+                { name: "Dankotuwa Agricultural Zone", lat: 7.2833, lon: 79.8667 },
+                { name: "Mundalama Farming Zone", lat: 7.6167, lon: 79.8333 },
+                { name: "Madampe Agricultural Area", lat: 7.5167, lon: 79.8500 },
+                { name: "Nawagattegama Farming Zone", lat: 8.0833, lon: 79.9000 }
+            ],
+            "Chilaw": [
+                { name: "Chilaw Coconut Plantations", lat: 7.5750, lon: 79.7958 },
+                { name: "Mundalama Agricultural Zone", lat: 7.6167, lon: 79.8333 },
+                { name: "Madampe Farming Area", lat: 7.5167, lon: 79.8500 },
+                { name: "Nattandiya Agricultural Zone", lat: 7.2167, lon: 79.8667 },
+                { name: "Wennappuwa Farming Area", lat: 7.3500, lon: 79.8500 },
+                { name: "Dankotuwa Agricultural Zone", lat: 7.2833, lon: 79.8667 },
+                { name: "Marawila Farming Zone", lat: 7.4167, lon: 79.8333 }
+            ],
+            "Kuliyapitiya": [
+                { name: "Kuliyapitiya Agricultural Zone", lat: 7.4667, lon: 80.0500 },
+                { name: "Bingiriya Farming Area", lat: 7.5167, lon: 80.0833 },
+                { name: "Wariyapola Vegetable Zone", lat: 7.6167, lon: 80.2833 },
+                { name: "Panduwasnuwara Farming Zone", lat: 7.6000, lon: 80.1167 },
+                { name: "Rideegama Agricultural Area", lat: 7.5500, lon: 80.2833 },
+                { name: "Giriulla Farming Zone", lat: 7.3333, lon: 80.2500 },
+                { name: "Dambadeniya Agricultural Zone", lat: 7.3667, lon: 80.1500 },
+                { name: "Ganewatta Farming Area", lat: 7.4333, lon: 80.3167 }
+            ],
+            "Narammala": [
+                { name: "Narammala Agricultural Zone", lat: 7.4333, lon: 80.2333 },
+                { name: "Polgahawela Farming Area", lat: 7.3500, lon: 80.3000 },
+                { name: "Alawwa Vegetable Zone", lat: 7.3000, lon: 80.2500 },
+                { name: "Giriulla Agricultural Zone", lat: 7.3333, lon: 80.2500 },
+                { name: "Dambadeniya Farming Zone", lat: 7.3667, lon: 80.1500 },
+                { name: "Ganewatta Agricultural Area", lat: 7.4333, lon: 80.3167 },
+                { name: "Melsiripura Farming Zone", lat: 7.5000, lon: 80.2833 }
+            ],
+            "Medawachchiya": [
+                { name: "Medawachchiya Agricultural Zone", lat: 8.5333, lon: 80.3167 },
+                { name: "Mannar Road Farming Area", lat: 8.5500, lon: 80.3000 },
+                { name: "Cheddikulam Farming Zone", lat: 8.8333, lon: 80.4500 },
+                { name: "Puliyankulam Agricultural Area", lat: 8.8000, lon: 80.4333 },
+                { name: "Poovarasankulam Farming Zone", lat: 8.7667, lon: 80.4667 }
+            ],
+            "Habarana": [
+                { name: "Habarana Paddy Fields", lat: 8.0322, lon: 80.7519 },
+                { name: "Minneriya Agricultural Zone", lat: 7.9833, lon: 80.7833 },
+                { name: "Kaudulla Farming Area", lat: 8.0833, lon: 80.8000 },
+                { name: "Giritale Agricultural Zone", lat: 7.9667, lon: 81.0167 },
+                { name: "Sungawila Farming Zone", lat: 7.9167, lon: 81.0333 },
+                { name: "Welikanda Agricultural Area", lat: 7.8333, lon: 81.1167 },
+                { name: "Medirigiriya Farming Zone", lat: 7.9833, lon: 81.0833 }
+            ],
+            "Eppawala": [
+                { name: "Eppawala Agricultural Zone", lat: 8.1456, lon: 80.4048 },
+                { name: "Eppawala Phosphate Farming Area", lat: 8.1500, lon: 80.4000 },
+                { name: "Kalawewa Agricultural Zone", lat: 8.2000, lon: 80.3500 },
+                { name: "Nachchaduwa Farming Area", lat: 8.3500, lon: 80.4500 },
+                { name: "Thambuttegama Agricultural Zone", lat: 8.0167, lon: 80.5667 }
+            ],
+            "Galenbindunuwewa": [
+                { name: "Galenbindunuwewa Agricultural Zone", lat: 8.1167, lon: 80.4500 },
+                { name: "Padaviya Farming Area", lat: 8.6667, lon: 80.7500 },
+                { name: "Kawudulla Agricultural Zone", lat: 8.2500, lon: 80.5000 },
+                { name: "Kebithigollawa Farming Area", lat: 8.6000, lon: 80.8500 },
+                { name: "Kalawewa Farming Zone", lat: 8.2000, lon: 80.3500 }
+            ],
+            "Galnewa": [
+                { name: "Galnewa Agricultural Zone", lat: 8.2027, lon: 80.3609 },
+                { name: "Thirappane Farming Area", lat: 8.2333, lon: 80.3833 },
+                { name: "Kalawewa Agricultural Zone", lat: 8.2000, lon: 80.3500 },
+                { name: "Nachchaduwa Farming Area", lat: 8.3500, lon: 80.4500 },
+                { name: "Sembukuttuwa Agricultural Zone", lat: 8.2800, lon: 80.3800 }
+            ],
+            "Horowupotana": [
+                { name: "Horowupotana Agricultural Zone", lat: 8.5593, lon: 80.8350 },
+                { name: "Kebithigollawa Farming Area", lat: 8.6000, lon: 80.8500 },
+                { name: "Padaviya Agricultural Zone", lat: 8.6667, lon: 80.7500 },
+                { name: "Kawudulla Farming Zone", lat: 8.2500, lon: 80.5000 },
+                { name: "Kalawewa Agricultural Area", lat: 8.2000, lon: 80.3500 }
+            ],
+            "Kahatagasdigiliya": [
+                { name: "Kahatagasdigiliya Agricultural Zone", lat: 8.4229, lon: 80.6937 },
+                { name: "Giribawa Farming Area", lat: 8.4500, lon: 80.7167 },
+                { name: "Kebithigollawa Agricultural Zone", lat: 8.6000, lon: 80.8500 },
+                { name: "Padaviya Farming Area", lat: 8.6667, lon: 80.7500 },
+                { name: "Kawudulla Agricultural Zone", lat: 8.2500, lon: 80.5000 }
+            ],
+            "Bulnewa": [
+                { name: "Bulnewa Agricultural Zone", lat: 8.1243, lon: 80.4107 },
+                { name: "Thambuttegama Farming Area", lat: 8.0167, lon: 80.5667 },
+                { name: "Nochchiyagama Agricultural Zone", lat: 8.1000, lon: 80.6500 },
+                { name: "Ganewalpola Farming Area", lat: 8.0876, lon: 80.6279 },
+                { name: "Kalawewa Agricultural Zone", lat: 8.2000, lon: 80.3500 }
+            ],
+            "Ganewalpola": [
+                { name: "Ganewalpola Agricultural Zone", lat: 8.0876, lon: 80.6279 },
+                { name: "Nochchiyagama Farming Area", lat: 8.1000, lon: 80.6500 },
+                { name: "Thambuttegama Agricultural Zone", lat: 8.0167, lon: 80.5667 },
+                { name: "Kekirawa Farming Area", lat: 8.0333, lon: 80.5833 },
+                { name: "Palugaswewa Agricultural Zone", lat: 8.0500, lon: 80.6000 }
+            ]
+        };
+        
+        // All locations with provinces and coordinates
+        const defaultLocations = [
+            // North Central Province
+            { name: "Anuradhapura", lat: 8.3114, lon: 80.4037, province: "North Central" },
+            { name: "Mihintale", lat: 8.3500, lon: 80.5167, province: "North Central" },
+            { name: "Kekirawa", lat: 8.0333, lon: 80.5833, province: "North Central" },
+            { name: "Medawachchiya", lat: 8.5333, lon: 80.3167, province: "North Central" },
+            { name: "Habarana", lat: 8.0322, lon: 80.7519, province: "North Central" },
+            { name: "Eppawala", lat: 8.1456, lon: 80.4048, province: "North Central" },
+            { name: "Galenbindunuwewa", lat: 8.1167, lon: 80.4500, province: "North Central" },
+            { name: "Galnewa", lat: 8.2027, lon: 80.3609, province: "North Central" },
+            { name: "Horowupotana", lat: 8.5593, lon: 80.8350, province: "North Central" },
+            { name: "Kahatagasdigiliya", lat: 8.4229, lon: 80.6937, province: "North Central" },
+            { name: "Bulnewa", lat: 8.1243, lon: 80.4107, province: "North Central" },
+            { name: "Ganewalpola", lat: 8.0876, lon: 80.6279, province: "North Central" },
+            { name: "Polonnaruwa", lat: 7.9333, lon: 81.0000, province: "North Central" },
+            // North Western Province
+            { name: "Kurunegala", lat: 7.4833, lon: 80.3667, province: "North Western" },
+            { name: "Puttalam", lat: 8.0333, lon: 79.8333, province: "North Western" },
+            { name: "Chilaw", lat: 7.5750, lon: 79.7958, province: "North Western" },
+            { name: "Kuliyapitiya", lat: 7.4667, lon: 80.0500, province: "North Western" },
+            { name: "Narammala", lat: 7.4333, lon: 80.2333, province: "North Western" },
+            // Western Province
+            { name: "Colombo", lat: 6.9271, lon: 79.8612, province: "Western" },
+            { name: "Gampaha", lat: 7.0917, lon: 79.9997, province: "Western" },
+            { name: "Kalutara", lat: 6.5833, lon: 79.9667, province: "Western" },
+            { name: "Negombo", lat: 7.2083, lon: 79.8358, province: "Western" },
+            { name: "Moratuwa", lat: 6.7733, lon: 79.8825, province: "Western" },
+            { name: "Panadura", lat: 6.7167, lon: 79.9000, province: "Western" },
+            // Central Province
+            { name: "Kandy", lat: 7.2906, lon: 80.6337, province: "Central" },
+            { name: "Nuwara Eliya", lat: 6.9497, lon: 80.7891, province: "Central" },
+            { name: "Matale", lat: 7.4675, lon: 80.6234, province: "Central" },
+            { name: "Hatton", lat: 6.8917, lon: 80.5958, province: "Central" },
+            { name: "Gampola", lat: 7.1667, lon: 80.5667, province: "Central" },
+            // Sabaragamuwa Province
+            { name: "Ratnapura", lat: 6.6828, lon: 80.4011, province: "Sabaragamuwa" },
+            { name: "Kegalle", lat: 7.2500, lon: 80.3500, province: "Sabaragamuwa" },
+            { name: "Balangoda", lat: 6.6500, lon: 80.7000, province: "Sabaragamuwa" },
+            { name: "Avissawella", lat: 6.9500, lon: 80.2167, province: "Sabaragamuwa" },
+            // Southern Province
+            { name: "Galle", lat: 6.0329, lon: 80.2170, province: "Southern" },
+            { name: "Matara", lat: 5.9549, lon: 80.5550, province: "Southern" },
+            { name: "Hambantota", lat: 6.1244, lon: 81.1186, province: "Southern" },
+            { name: "Weligama", lat: 5.9750, lon: 80.4292, province: "Southern" },
+            { name: "Tangalle", lat: 6.0233, lon: 80.7917, province: "Southern" },
+            // Uva Province
+            { name: "Badulla", lat: 6.9934, lon: 81.0550, province: "Uva" },
+            { name: "Monaragala", lat: 6.8667, lon: 81.3500, province: "Uva" },
+            { name: "Bandarawela", lat: 6.8333, lon: 80.9833, province: "Uva" },
+            { name: "Haputale", lat: 6.7667, lon: 80.9667, province: "Uva" },
+            // Eastern Province
+            { name: "Batticaloa", lat: 7.7102, lon: 81.6924, province: "Eastern" },
+            { name: "Trincomalee", lat: 8.5874, lon: 81.2152, province: "Eastern" },
+            { name: "Ampara", lat: 7.2833, lon: 81.6667, province: "Eastern" },
+            { name: "Kalmunai", lat: 7.4167, lon: 81.8167, province: "Eastern" },
+            // Northern Province
+            { name: "Jaffna", lat: 9.6615, lon: 80.0255, province: "Northern" },
+            { name: "Vavuniya", lat: 8.7500, lon: 80.5000, province: "Northern" },
+            { name: "Kilinochchi", lat: 9.4000, lon: 80.4000, province: "Northern" },
+            { name: "Mullaitivu", lat: 9.2667, lon: 80.8167, province: "Northern" }
+        ];
+        
+        // Store original city options for filtering (always store English names)
+        let originalCityOptions = [];
+        
+        // Initialize on page load
+        function initializeCityFilter() {
+            const citySelect = document.getElementById('city-select');
+            if (citySelect) {
+                // Store original English names for all options immediately
+                Array.from(citySelect.querySelectorAll('option[data-province]')).forEach(opt => {
+                    // Store the original English name from the value attribute
+                    opt.dataset.originalCity = opt.value;
+                });
+                
+                // Always use the value attribute as the English name (value is always in English)
+                originalCityOptions = Array.from(citySelect.querySelectorAll('option[data-province]')).map(opt => ({
+                    value: opt.value,
+                    text: opt.value, // Use value (English) as the original text, not textContent which may be translated
+                    province: opt.getAttribute('data-province')
+                }));
+            }
+        }
+        
+        // Filter cities by province
+        function filterCitiesByProvince() {
+            const provinceSelect = document.getElementById('province-select');
+            const citySelect = document.getElementById('city-select');
+            const selectedProvince = provinceSelect.value;
+            const currentCity = citySelect.value;
+            
+            // Clear city dropdown except the first option
+            const selectCityText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                ? window.getTranslation('weather.selectCityOption') || 'Select a city'
+                : 'Select a city';
+            citySelect.innerHTML = '<option value="">' + selectCityText + '</option>';
+            
+            // Filter and add cities based on province (use value as English name)
+            originalCityOptions.forEach(city => {
+                if (!selectedProvince || city.province === selectedProvince) {
+                    const option = document.createElement('option');
+                    option.value = city.value;
+                    // Store original English name for translation purposes
+                    option.dataset.originalCity = city.value;
+                    // Set text content to English name initially
+                    option.textContent = city.value;
+                    option.setAttribute('data-province', city.province);
+                    citySelect.appendChild(option);
+                }
+            });
+            
+            // Apply translation after adding all options
+            translateCityDropdowns();
+            
+            // Try to restore previous selection if it's still available
+            if (currentCity && Array.from(citySelect.options).some(opt => opt.value === currentCity)) {
+                citySelect.value = currentCity;
+                filterSubAreasByCity();
+            } else {
+                citySelect.value = '';
+                // Clear sub-area dropdown
+                const subAreaSelect = document.getElementById('sub-area-select');
+                const placeholderText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                    ? window.getTranslation('weather.selectSubArea') 
+                    : 'Select a sub-area';
+                subAreaSelect.innerHTML = '<option value="">' + placeholderText + '</option>';
+                // Clear weather display if no city selected
+                clearWeatherDisplay();
+            }
+            
+            // Update map markers - only show if province is selected (not "All Provinces")
+            updateMapMarkers();
+            
+            // Clear weather display if no province is selected
+            if (!selectedProvince) {
+                clearWeatherDisplay();
+            }
+        }
+        
+        // Filter sub-areas by selected city
+        function filterSubAreasByCity() {
+            const citySelect = document.getElementById('city-select');
+            const subAreaSelect = document.getElementById('sub-area-select');
+            const selectedCity = citySelect.value;
+            
+            // Get translation for placeholder
+            const placeholderText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                ? window.getTranslation('weather.selectSubArea') 
+                : 'Select a sub-area';
+            
+            // Clear sub-area dropdown
+            subAreaSelect.innerHTML = '<option value="">' + placeholderText + '</option>';
+            
+            // Add sub-areas for selected city
+            if (selectedCity && subAreas[selectedCity]) {
+                subAreas[selectedCity].forEach(area => {
+                    const option = document.createElement('option');
+                    option.value = area.name;
+                    // Store original English name for translation
+                    option.dataset.originalSubArea = area.name;
+                    option.textContent = area.name;
+                    option.setAttribute('data-lat', area.lat);
+                    option.setAttribute('data-lon', area.lon);
+                    subAreaSelect.appendChild(option);
+                });
+            }
+            
+            // Apply translation after adding all options
+            translateSubAreaDropdowns();
+        }
+        
+        // Store sub-area markers
+        const subAreaMarkers = {};
+        
+        // Search weather for selected sub-area
+        async function searchSubArea() {
+            const subAreaSelect = document.getElementById('sub-area-select');
+            const selectedSubArea = subAreaSelect.value;
+            
+            if (!selectedSubArea) {
+                // Clear sub-area markers when no sub-area selected
+                Object.values(subAreaMarkers).forEach(marker => {
+                    if (marker && map.hasLayer(marker)) {
+                        map.removeLayer(marker);
+                    }
+                });
+                Object.keys(subAreaMarkers).forEach(key => delete subAreaMarkers[key]);
+                return;
+            }
+            
+            const selectedOption = subAreaSelect.options[subAreaSelect.selectedIndex];
+            const lat = parseFloat(selectedOption.getAttribute('data-lat'));
+            const lon = parseFloat(selectedOption.getAttribute('data-lon'));
+            
+            if (isNaN(lat) || isNaN(lon)) return;
+            
+            try {
+                const weather = await getCurrentWeather(lat, lon);
+                const info = weatherMap[weather.weather_code] || {desc:'Unknown',icon:'❓',gradient:'linear-gradient(to bottom, #ccc, #eee)',text:'dark'};
+                currentWeekly = await getWeeklyForecast(lat, lon);
+                rawClimateData = await getClimateOutlook(lat, lon);
+                currentClimate = processClimateData(rawClimateData);
+                
+                updatePanel(selectedSubArea, weather, info);
+                map.setView([lat, lon], 13);
+                
+                // Add/update marker for sub-area
+                if (subAreaMarkers[selectedSubArea]) {
+                    map.removeLayer(subAreaMarkers[selectedSubArea]);
+                }
+                const marker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        html: `<span style="font-size: 2em;">${info.icon}</span>`,
+                        className: 'weather-marker'
+                    })
+                }).addTo(map);
+                subAreaMarkers[selectedSubArea] = marker;
+                // Note: Sub-area names are typically not city names, but translate if it matches a city
+                let displaySubArea = selectedSubArea;
+                if (window.translateCityName && typeof window.translateCityName === 'function') {
+                    const translated = window.translateCityName(selectedSubArea);
+                    if (translated && translated !== selectedSubArea) {
+                        displaySubArea = translated;
+                    }
+                }
+                marker.bindPopup(`${displaySubArea}<br>${translateWeatherCondition(info.desc)}<br>Temp: ${weather.temperature_2m} °C<br>Humidity: ${weather.relative_humidity_2m}%`);
+                
+                // Sync weather data to plant tracking
+                syncWeatherToPlantTracking(selectedSubArea, weather);
+            } catch (error) {
+                console.error('Error fetching weather for sub-area:', error);
+                alert('Error fetching weather data. Please try again.');
+            }
+        }
+        
+        // Function to sync weather data with plant tracking
+        function syncWeatherToPlantTracking(cityName, weather) {
+            try {
+                const CHART_DATA_KEY = 'plant_tracker_chart_data';
+                const saved = localStorage.getItem(CHART_DATA_KEY);
+                let chartData = saved ? JSON.parse(saved) : { dates: [], growthStages: [], temperatures: [], humidity: [] };
+                
+                // Get current date in same format as plant tracking
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                // Get current growth stage from plant tracking if available, otherwise default to 1
+                let currentStage = 1;
+                try {
+                    const stageData = localStorage.getItem('plant_stage');
+                    if (stageData) {
+                        currentStage = parseInt(stageData) || 1;
+                    }
+                } catch (e) {
+                    // Use default
+                }
+                
+                // Check if today's data already exists
+                const lastIndex = chartData.dates.length - 1;
+                if (lastIndex >= 0 && chartData.dates[lastIndex] === dateStr) {
+                    // Update existing entry for today
+                    chartData.temperatures[lastIndex] = Math.round(weather.temperature_2m);
+                    chartData.humidity[lastIndex] = Math.round(weather.relative_humidity_2m);
+                    chartData.growthStages[lastIndex] = currentStage;
+                } else {
+                    // Keep only last 14 days
+                    if (chartData.dates.length >= 14) {
+                        chartData.dates.shift();
+                        chartData.growthStages.shift();
+                        chartData.temperatures.shift();
+                        chartData.humidity.shift();
+                    }
+                    
+                    // Add new data point
+                    chartData.dates.push(dateStr);
+                    chartData.growthStages.push(currentStage);
+                    chartData.temperatures.push(Math.round(weather.temperature_2m));
+                    chartData.humidity.push(Math.round(weather.relative_humidity_2m));
+                }
+                
+                // Save to localStorage
+                localStorage.setItem(CHART_DATA_KEY, JSON.stringify(chartData));
+                
+                // Also save last weather data for plant tracking to use
+                localStorage.setItem('last_weather_data', JSON.stringify({
+                    city: cityName,
+                    temp: weather.temperature_2m,
+                    humidity: weather.relative_humidity_2m,
+                    timestamp: Date.now()
+                }));
+            } catch (error) {
+                console.error('Error syncing weather to plant tracking:', error);
+            }
+        }
+        
+        // Handle get current location - check permission first
+        async function handleGetCurrentLocation() {
+            // Check if geolocation is supported
+            if (!navigator.geolocation) {
+                const errorMsg = (window.getTranslation && typeof window.getTranslation === 'function') 
+                    ? window.getTranslation('weather.geolocationNotSupported') || 'Geolocation is not supported by your browser.'
+                    : 'Geolocation is not supported by your browser.';
+                alert(errorMsg);
+                return;
+            }
+            
+            // Try to get location - if permission denied, show modal
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    // Permission granted, get location directly
+                    await getCurrentLocation();
+                },
+                (error) => {
+                    if (error.code === error.PERMISSION_DENIED) {
+                        // Show modal to request permission
+                        const modal = document.getElementById('location-modal');
+                        modal.classList.add('active');
+                    } else {
+                        // Other error - try anyway
+                        getCurrentLocation();
+                    }
+                },
+                { enableHighAccuracy: false, timeout: 100, maximumAge: Infinity }
+            );
+        }
+        
+        // Allow location access
+        function allowLocationAccess() {
+            const modal = document.getElementById('location-modal');
+            modal.classList.remove('active');
+            getCurrentLocation();
+        }
+        
+        // Cancel location access
+        function cancelLocationAccess() {
+            const modal = document.getElementById('location-modal');
+            modal.classList.remove('active');
+        }
+        
+        // Get current location and show weather
+        async function getCurrentLocation() {
+            const btn = document.getElementById('current-location-btn');
+            if (!btn) return;
+            
+            const originalText = btn.innerHTML;
+            
+            if (!navigator.geolocation) {
+                const errorMsg = (window.getTranslation && typeof window.getTranslation === 'function') 
+                    ? window.getTranslation('weather.geolocationNotSupported') || 'Geolocation is not supported by your browser. Please enable location access in your browser settings.'
+                    : 'Geolocation is not supported by your browser. Please enable location access in your browser settings.';
+                alert(errorMsg);
+                return;
+            }
+            
+            const loadingText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                ? window.getTranslation('weather.gettingLocation') || 'Getting location...'
+                : 'Getting location...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + loadingText;
+            btn.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    try {
+                        // Get weather for current location
+                        const weather = await getCurrentWeather(lat, lon);
+                        const info = weatherMap[weather.weather_code] || {desc:'Unknown',icon:'❓',gradient:'linear-gradient(to bottom, #ccc, #eee)',text:'dark'};
+                        currentWeekly = await getWeeklyForecast(lat, lon);
+                        rawClimateData = await getClimateOutlook(lat, lon);
+                        currentClimate = processClimateData(rawClimateData);
+                        
+                        // Update UI
+                        document.getElementById('city-select').value = '';
+                        updatePanel('Current Location', weather, info);
+                        map.setView([lat, lon], 12);
+                        
+                        // Sync weather data to plant tracking
+                        syncWeatherToPlantTracking('Current Location', weather);
+                        
+                        // Add marker for current location with weather icon
+                        if (markers['Current Location']) {
+                            map.removeLayer(markers['Current Location']);
+                        }
+                        const marker = L.marker([lat, lon], {
+                            icon: L.divIcon({
+                                html: `<span style="font-size: 2em;">${info.icon}</span>`,
+                                className: 'weather-marker'
+                            })
+                        }).addTo(map);
+                        markers['Current Location'] = marker;
+                        // Translate "Current Location" if needed
+                        let locationText = 'Current Location';
+                        if (window.getTranslation && typeof window.getTranslation === 'function') {
+                            const translated = window.getTranslation('weather.currentLocation');
+                            if (translated && translated !== 'weather.currentLocation') {
+                                locationText = translated;
+                            }
+                        }
+                        marker.bindPopup(`${locationText}<br>${translateWeatherCondition(info.desc)}<br>Temp: ${weather.temperature_2m} °C`);
+                    } catch (error) {
+                        alert('Error fetching weather data. Please try again.');
+                        console.error(error);
+                    } finally {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                },
+                (error) => {
+                    let errorMsg = '';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        // Show modal to request permission
+                        requestLocationAccess();
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        return;
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        errorMsg = (window.getTranslation && typeof window.getTranslation === 'function') 
+                            ? window.getTranslation('weather.locationUnavailable') || 'Location information is unavailable.'
+                            : 'Location information is unavailable.';
+                    } else if (error.code === error.TIMEOUT) {
+                        errorMsg = (window.getTranslation && typeof window.getTranslation === 'function') 
+                            ? window.getTranslation('weather.locationTimeout') || 'Location request timed out. Please try again.'
+                            : 'Location request timed out. Please try again.';
+                    } else {
+                        errorMsg = (window.getTranslation && typeof window.getTranslation === 'function') 
+                            ? window.getTranslation('weather.locationError') || 'Unable to retrieve your location. Please check your browser settings.'
+                            : 'Unable to retrieve your location. Please check your browser settings.';
+                    }
+                    if (errorMsg) alert(errorMsg);
+                    console.error(error);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        // Initialize map - centered on Sri Lanka
+        const map = L.map('map').setView([7.8731, 80.7718], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Function to translate weather condition descriptions
+        function translateWeatherCondition(desc) {
+            if (!desc || !window.getTranslation || typeof window.getTranslation !== 'function') {
+                return desc;
+            }
+            
+            const conditionMap = {
+                'Clear sky': 'weather.clearSky',
+                'Mainly clear': 'weather.mainlyClear',
+                'Partly cloudy': 'weather.partlyCloudy',
+                'Overcast': 'weather.overcast',
+                'Fog': 'weather.fog',
+                'Depositing rime fog': 'weather.depositingRimeFog',
+                'Light drizzle': 'weather.lightDrizzle',
+                'Moderate drizzle': 'weather.moderateDrizzle',
+                'Dense drizzle': 'weather.denseDrizzle',
+                'Light freezing drizzle': 'weather.lightFreezingDrizzle',
+                'Dense freezing drizzle': 'weather.denseFreezingDrizzle',
+                'Slight rain': 'weather.slightRain',
+                'Moderate rain': 'weather.moderateRain',
+                'Heavy rain': 'weather.heavyRain',
+                'Light freezing rain': 'weather.freezingRain',
+                'Heavy freezing rain': 'weather.freezingRain',
+                'Slight rain and snow': 'weather.rainAndSnow',
+                'Moderate rain and snow': 'weather.rainAndSnow',
+                'Slight snow fall': 'weather.slightSnowFall',
+                'Moderate snow fall': 'weather.moderateSnowFall',
+                'Heavy snow fall': 'weather.heavySnowFall',
+                'Ice fog': 'weather.iceFog',
+                'Snow grains': 'weather.snowGrains',
+                'Ice pellets': 'weather.icePellets',
+                'Slight rain showers': 'weather.slightRainShowers',
+                'Moderate rain showers': 'weather.moderateRainShowers',
+                'Violent rain showers': 'weather.violentRainShowers',
+                'Slight snow showers': 'weather.slightSnowShowers',
+                'Heavy snow showers': 'weather.heavySnowShowers',
+                'Snow showers': 'weather.snowShowers',
+                'Thunderstorm': 'weather.thunderstorm',
+                'Thunderstorm with slight hail': 'weather.thunderstormHail',
+                'Thunderstorm with heavy hail': 'weather.thunderstormHeavyHail'
+            };
+            
+            const translationKey = conditionMap[desc];
+            if (translationKey) {
+                const translated = window.getTranslation(translationKey);
+                if (translated && translated !== translationKey) {
+                    return translated;
+                }
+            }
+            return desc;
+        }
+        
+        const weatherMap = {
+            0: { desc: "Clear sky", icon: "☀️", gradient: "linear-gradient(to bottom, #ffd700, #fff8dc)", text: 'dark' },
+            1: { desc: "Mainly clear", icon: "🌤️", gradient: "linear-gradient(to bottom, #87ceeb, #fff)", text: 'dark' },
+            2: { desc: "Partly cloudy", icon: "⛅", gradient: "linear-gradient(to bottom, #b0c4de, #fff)", text: 'dark' },
+            3: { desc: "Overcast", icon: "☁️", gradient: "linear-gradient(to bottom, #a9a9a9, #d3d3d3)", text: 'dark' },
+            45: { desc: "Fog", icon: "🌫️", gradient: "linear-gradient(to bottom, #c0c0c0, #e0e0e0)", text: 'dark' },
+            48: { desc: "Depositing rime fog", icon: "🌫️", gradient: "linear-gradient(to bottom, #c0c0c0, #e0e0e0)", text: 'dark' },
+            51: { desc: "Light drizzle", icon: "🌦️", gradient: "linear-gradient(to bottom, #87ceeb, #b0e0e6)", text: 'dark' },
+            52: { desc: "Moderate drizzle", icon: "🌦️", gradient: "linear-gradient(to bottom, #87ceeb, #b0e0e6)", text: 'dark' },
+            53: { desc: "Dense drizzle", icon: "🌦️", gradient: "linear-gradient(to bottom, #4682b4, #87ceeb)", text: 'dark' },
+            54: { desc: "Light freezing drizzle", icon: "🌨️", gradient: "linear-gradient(to bottom, #b0c4de, #d3d3d3)", text: 'dark' },
+            55: { desc: "Dense drizzle", icon: "🌦️", gradient: "linear-gradient(to bottom, #4169e1, #87ceeb)", text: 'dark' },
+            56: { desc: "Light freezing drizzle", icon: "🌨️", gradient: "linear-gradient(to bottom, #b0c4de, #d3d3d3)", text: 'dark' },
+            57: { desc: "Dense freezing drizzle", icon: "🌨️", gradient: "linear-gradient(to bottom, #778899, #b0c4de)", text: 'dark' },
+            58: { desc: "Dense freezing drizzle", icon: "🌨️", gradient: "linear-gradient(to bottom, #778899, #b0c4de)", text: 'dark' },
+            61: { desc: "Slight rain", icon: "🌧️", gradient: "linear-gradient(to bottom, #4682b4, #add8e6)", text: 'dark' },
+            62: { desc: "Moderate rain", icon: "🌧️", gradient: "linear-gradient(to bottom, #4169e1, #87cefa)", text: 'dark' },
+            63: { desc: "Moderate rain", icon: "🌧️", gradient: "linear-gradient(to bottom, #4169e1, #87cefa)", text: 'dark' },
+            64: { desc: "Heavy rain", icon: "🌧️", gradient: "linear-gradient(to bottom, #00008b, #4682b4)", text: 'light' },
+            65: { desc: "Heavy rain", icon: "🌧️", gradient: "linear-gradient(to bottom, #00008b, #4682b4)", text: 'light' },
+            66: { desc: "Light freezing rain", icon: "🌨️", gradient: "linear-gradient(to bottom, #b0c4de, #d3d3d3)", text: 'dark' },
+            67: { desc: "Heavy freezing rain", icon: "🌨️", gradient: "linear-gradient(to bottom, #778899, #b0c4de)", text: 'dark' },
+            68: { desc: "Slight rain and snow", icon: "🌨️", gradient: "linear-gradient(to bottom, #b0c4de, #d3d3d3)", text: 'dark' },
+            69: { desc: "Moderate rain and snow", icon: "🌨️", gradient: "linear-gradient(to bottom, #778899, #b0c4de)", text: 'dark' },
+            70: { desc: "Slight snow fall", icon: "❄️", gradient: "linear-gradient(to bottom, #e6e6fa, #f0f8ff)", text: 'dark' },
+            71: { desc: "Slight snow fall", icon: "❄️", gradient: "linear-gradient(to bottom, #e6e6fa, #f0f8ff)", text: 'dark' },
+            72: { desc: "Moderate snow fall", icon: "❄️", gradient: "linear-gradient(to bottom, #d3d3d3, #e6e6fa)", text: 'dark' },
+            73: { desc: "Moderate snow fall", icon: "❄️", gradient: "linear-gradient(to bottom, #d3d3d3, #e6e6fa)", text: 'dark' },
+            74: { desc: "Heavy snow fall", icon: "❄️", gradient: "linear-gradient(to bottom, #c0c0c0, #d3d3d3)", text: 'dark' },
+            75: { desc: "Heavy snow fall", icon: "❄️", gradient: "linear-gradient(to bottom, #c0c0c0, #d3d3d3)", text: 'dark' },
+            76: { desc: "Ice fog", icon: "🌫️", gradient: "linear-gradient(to bottom, #c0c0c0, #e0e0e0)", text: 'dark' },
+            77: { desc: "Snow grains", icon: "❄️", gradient: "linear-gradient(to bottom, #e6e6fa, #f0f8ff)", text: 'dark' },
+            78: { desc: "Snow grains", icon: "❄️", gradient: "linear-gradient(to bottom, #e6e6fa, #f0f8ff)", text: 'dark' },
+            79: { desc: "Ice pellets", icon: "🌨️", gradient: "linear-gradient(to bottom, #b0c4de, #d3d3d3)", text: 'dark' },
+            80: { desc: "Slight rain showers", icon: "🌦️", gradient: "linear-gradient(to bottom, #87ceeb, #b0e0e6)", text: 'dark' },
+            81: { desc: "Moderate rain showers", icon: "🌦️", gradient: "linear-gradient(to bottom, #4682b4, #87ceeb)", text: 'dark' },
+            82: { desc: "Violent rain showers", icon: "🌧️", gradient: "linear-gradient(to bottom, #00008b, #4682b4)", text: 'light' },
+            83: { desc: "Slight snow showers", icon: "🌨️", gradient: "linear-gradient(to bottom, #e6e6fa, #f0f8ff)", text: 'dark' },
+            84: { desc: "Heavy snow showers", icon: "🌨️", gradient: "linear-gradient(to bottom, #d3d3d3, #e6e6fa)", text: 'dark' },
+            85: { desc: "Slight snow showers", icon: "🌨️", gradient: "linear-gradient(to bottom, #e6e6fa, #f0f8ff)", text: 'dark' },
+            86: { desc: "Heavy snow showers", icon: "🌨️", gradient: "linear-gradient(to bottom, #d3d3d3, #e6e6fa)", text: 'dark' },
+            87: { desc: "Snow showers", icon: "🌨️", gradient: "linear-gradient(to bottom, #d3d3d3, #e6e6fa)", text: 'dark' },
+            95: { desc: "Thunderstorm", icon: "⛈️", gradient: "linear-gradient(to bottom, #4b0082, #9370db)", text: 'light' },
+            96: { desc: "Thunderstorm with slight hail", icon: "⛈️", gradient: "linear-gradient(to bottom, #4b0082, #9370db)", text: 'light' },
+            99: { desc: "Thunderstorm with heavy hail", icon: "⛈️", gradient: "linear-gradient(to bottom, #4b0082, #9370db)", text: 'light' }
+        };
+
+        async function getCurrentWeather(lat, lon) {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code&timezone=Asia/Colombo`;
+            const res = await fetch(url); const data = await res.json();
+            return data.current;
+        }
+        async function getWeeklyForecast(lat, lon) {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=Asia/Colombo&forecast_days=7`;
+            const res = await fetch(url); const data = await res.json();
+            return data.daily;
+        }
+        async function getClimateOutlook(lat, lon) {
+            const today = new Date().toISOString().split('T')[0];
+            const d = new Date(); d.setMonth(d.getMonth()-3);
+            const start = d.toISOString().split('T')[0];
+            const url = `https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lon}&start_date=${start}&end_date=${today}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum`;
+            const res = await fetch(url); const data = await res.json();
+            return data.daily;
+        }
+        // Function to get locale based on current language
+        function getDateLocale() {
+            const currentLang = window.currentLanguage || localStorage.getItem('language') || 'en';
+            const localeMap = {
+                'en': 'en-US',
+                'si': 'si-LK',
+                'ta': 'ta-LK'
+            };
+            return localeMap[currentLang] || 'en-US';
+        }
+        
+        // Function to format date based on current language
+        function formatDate(date, options = {}) {
+            const locale = getDateLocale();
+            const defaultOptions = {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            };
+            const finalOptions = { ...defaultOptions, ...options };
+            return new Date(date).toLocaleDateString(locale, finalOptions);
+        }
+        
+        function processClimateData(climate) {
+            const months = {}; const out = [];
+            const locale = getDateLocale();
+            climate.time.forEach((t,i)=>{
+                const mk = new Date(t).toLocaleString(locale, {month:'long',year:'numeric'});
+                (months[mk] ||= {max:[],min:[],p:[]});
+                months[mk].max.push(climate.temperature_2m_max[i]);
+                months[mk].min.push(climate.temperature_2m_min[i]);
+                months[mk].p.push(climate.precipitation_sum[i]);
+            });
+            for(const m in months){
+                const d=months[m];
+                out.push({month:m, avgMax:(d.max.reduce((a,b)=>a+b,0)/d.max.length).toFixed(1), avgMin:(d.min.reduce((a,b)=>a+b,0)/d.min.length).toFixed(1), totalPrecip:(d.p.reduce((a,b)=>a+b,0)).toFixed(1)});
+            }
+            return out;
+        }
+
+        const markers = {};
+        let allMarkers = {}; // Store all markers
+        
+        // Function to update map markers based on selected province
+        function updateMapMarkers() {
+            const provinceSelect = document.getElementById('province-select');
+            const selectedProvince = provinceSelect.value;
+            
+            // Remove all existing markers from map (but keep in allMarkers)
+            Object.values(markers).forEach(marker => {
+                if (marker && map.hasLayer(marker)) {
+                    map.removeLayer(marker);
+                }
+            });
+            Object.keys(markers).forEach(key => delete markers[key]);
+            
+            // Only show markers if a specific province is selected (not "All Provinces")
+            if (selectedProvince) {
+                defaultLocations.forEach(loc => {
+                    if (loc.province === selectedProvince) {
+                        if (allMarkers[loc.name]) {
+                            if (!map.hasLayer(allMarkers[loc.name])) {
+                                map.addLayer(allMarkers[loc.name]);
+                            }
+                            markers[loc.name] = allMarkers[loc.name];
+                        }
+                    }
+                });
+            }
+            // If no province selected or "All Provinces", map stays clear
+        }
+
+        async function addMarker(loc){
+            const weather = await getCurrentWeather(loc.lat, loc.lon);
+            const info = weatherMap[weather.weather_code] || {desc:'Unknown',icon:'❓',gradient:'linear-gradient(to bottom, #ccc, #eee)',text:'dark'};
+            const marker = L.marker([loc.lat, loc.lon], { icon: L.divIcon({ html:`<span style="font-size: 4em;">${info.icon}</span>`, className:'weather-marker', iconSize: [40, 40] })});
+            allMarkers[loc.name] = marker; // Store in allMarkers
+            
+            // Translate city name for popup
+            let displayCityName = loc.name;
+            if (window.translateCityName && typeof window.translateCityName === 'function') {
+                displayCityName = window.translateCityName(loc.name);
+            }
+            
+            marker.bindPopup(`${displayCityName}<br>${translateWeatherCondition(info.desc)}<br>Temp: ${weather.temperature_2m} °C`);
+            marker.on('click', ()=> selectCity(loc));
+            // Don't add to map initially - only add when province is selected
+        }
+        
+        // Initialize all markers (but don't add to map yet)
+        defaultLocations.forEach(addMarker);
+
+        let currentWeekly=null, currentClimate=null, rawClimateData=null;
+        async function selectCity(loc){
+            document.getElementById('city-select').value = loc.name;
+            // Clear sub-area selection when selecting a main city
+            const subAreaSelect = document.getElementById('sub-area-select');
+            subAreaSelect.value = '';
+            // Clear sub-area markers
+            Object.values(subAreaMarkers).forEach(marker => {
+                if (marker && map.hasLayer(marker)) {
+                    map.removeLayer(marker);
+                }
+            });
+            Object.keys(subAreaMarkers).forEach(key => delete subAreaMarkers[key]);
+            
+            const weather = await getCurrentWeather(loc.lat, loc.lon);
+            const info = weatherMap[weather.weather_code] || {desc:'Unknown',icon:'❓',gradient:'linear-gradient(to bottom, #ccc, #eee)',text:'dark'};
+            currentWeekly = await getWeeklyForecast(loc.lat, loc.lon);
+            rawClimateData = await getClimateOutlook(loc.lat, loc.lon);
+            currentClimate = processClimateData(rawClimateData);
+            updatePanel(loc.name, weather, info);
+            map.setView([loc.lat, loc.lon], 12);
+            
+            // Add/update marker for the selected city with weather icon
+            if (markers[loc.name]) {
+                map.removeLayer(markers[loc.name]);
+            }
+            const marker = L.marker([loc.lat, loc.lon], {
+                icon: L.divIcon({
+                    html: `<span style="font-size: 2em;">${info.icon}</span>`,
+                    className: 'weather-marker'
+                })
+            }).addTo(map);
+            markers[loc.name] = marker;
+            
+            // Translate city name for popup
+            let displayCityName = loc.name;
+            if (window.translateCityName && typeof window.translateCityName === 'function') {
+                displayCityName = window.translateCityName(loc.name);
+            }
+            
+            marker.bindPopup(`${displayCityName}<br>${translateWeatherCondition(info.desc)}<br>Temp: ${weather.temperature_2m} °C<br>Humidity: ${weather.relative_humidity_2m}%`);
+        }
+
+        async function searchCity(){
+            const name = document.getElementById('city-select').value;
+            if(!name) {
+                // Clear sub-area when city is cleared
+                const subAreaSelect = document.getElementById('sub-area-select');
+                const placeholderText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                    ? window.getTranslation('weather.selectSubArea') 
+                    : 'Select a sub-area';
+                subAreaSelect.innerHTML = '<option value="">' + placeholderText + '</option>';
+                // Clear weather display
+                clearWeatherDisplay();
+                return;
+            }
+            const loc = defaultLocations.find(l=>l.name===name);
+            if(loc) {
+                await selectCity(loc);
+                // Filter sub-areas for selected city
+                filterSubAreasByCity();
+            }
+        }
+        
+        // Clear weather display when no city is selected
+        function clearWeatherDisplay() {
+            document.getElementById('weather-icon').textContent = '🌤️';
+            const tempEl = document.getElementById('temperature');
+            const humidityEl = document.getElementById('humidity');
+            const windSpeedEl = document.getElementById('wind-speed');
+            const rainfallEl = document.getElementById('rainfall');
+            const conditionEl = document.getElementById('condition');
+            
+            if (tempEl) {
+                const label = tempEl.querySelector('.label-text');
+                const value = tempEl.querySelector('.value-text');
+                if (value) value.textContent = '--';
+            }
+            if (humidityEl) {
+                const value = humidityEl.querySelector('.value-text');
+                if (value) value.textContent = '--';
+            }
+            if (windSpeedEl) {
+                const value = windSpeedEl.querySelector('.value-text');
+                if (value) value.textContent = '--';
+            }
+            if (rainfallEl) {
+                const value = rainfallEl.querySelector('.value-text');
+                if (value) value.textContent = '--';
+            }
+            if (conditionEl) {
+                const value = conditionEl.querySelector('.value-text');
+                if (value) value.textContent = '--';
+            }
+            
+            document.getElementById('forecast-content').innerHTML = '';
+            const forecastTitle = document.getElementById('forecast-title');
+            if (forecastTitle && window.getTranslation && typeof window.getTranslation === 'function') {
+                const translated = window.getTranslation('weather.weeklyForecast');
+                if (translated && translated !== 'weather.weeklyForecast') {
+                    forecastTitle.textContent = translated;
+                } else {
+                    forecastTitle.textContent = '7-Day Forecast';
+                }
+            } else if (forecastTitle) {
+                forecastTitle.textContent = '7-Day Forecast';
+            }
+            currentWeekly = null;
+            currentClimate = null;
+            rawClimateData = null;
+            const right = document.getElementById('right-panel');
+            right.style.background = 'linear-gradient(to bottom, #a8e063, #56ab2f)';
+            right.classList.remove('dark-text');
+        }
+
+        function updateForecastDisplay(){
+            const forecastSelect = document.getElementById('forecast-select');
+            const type = forecastSelect ? forecastSelect.value : 'weekly';
+            const content = document.getElementById('forecast-content');
+            const title = document.getElementById('forecast-title');
+            
+            if (!content || !title) {
+                console.error('Forecast elements not found');
+                return;
+            }
+            
+            content.innerHTML='';
+            
+            // Only show forecast if a city is selected
+            const citySelect = document.getElementById('city-select');
+            if (!citySelect || !citySelect.value) {
+                if (window.getTranslation && typeof window.getTranslation === 'function') {
+                    const translated = window.getTranslation('weather.weeklyForecast');
+                    if (translated && translated !== 'weather.weeklyForecast') {
+                        title.textContent = translated;
+                    } else {
+                        title.textContent = '7-Day Forecast';
+                    }
+                } else {
+                    title.textContent = '7-Day Forecast';
+                }
+                return;
+            }
+            
+            // Ensure forecast-select has a default value
+            if (forecastSelect && !forecastSelect.value) {
+                forecastSelect.value = 'weekly';
+            }
+            
+            if(type==='weekly' && currentWeekly && currentWeekly.time && currentWeekly.time.length > 0){
+                if (window.getTranslation && typeof window.getTranslation === 'function') {
+                    const translated = window.getTranslation('weather.weeklyForecast');
+                    if (translated && translated !== 'weather.weeklyForecast') {
+                        title.textContent = translated;
+                    } else {
+                        title.textContent = '7-Day Forecast';
+                    }
+                } else {
+                    title.textContent='7-Day Forecast';
+                }
+                currentWeekly.time.forEach((t,i)=>{
+                    const code=currentWeekly.weather_code[i];
+                    const d=weatherMap[code]||{desc:'Unknown',icon:'❓'};
+                    const translatedDesc = translateWeatherCondition(d.desc);
+                    const formattedDate = formatDate(t, {weekday:'short',month:'short',day:'numeric'});
+                    const card=document.createElement('div');
+                    card.className='forecast-card';
+                    card.innerHTML=`<p class="forecast-day">${formattedDate}: ${d.icon} ${translatedDesc}</p>
+                    <p class="forecast-day">${currentWeekly.temperature_2m_max[i]}°/${currentWeekly.temperature_2m_min[i]}°C, ${currentWeekly.precipitation_sum[i]} mm</p>`;
+                    content.appendChild(card);
+                });
+            } else if(type==='climate' && currentClimate && currentClimate.length > 0){
+                if (window.getTranslation && typeof window.getTranslation === 'function') {
+                    const translated = window.getTranslation('weather.climateOutlook');
+                    if (translated && translated !== 'weather.climateOutlook') {
+                        title.textContent = translated;
+                    } else {
+                        title.textContent = '3-Month Climate Outlook';
+                    }
+                } else {
+                    title.textContent='3-Month Climate Outlook';
+                }
+                currentClimate.forEach(m=>{
+                    const card=document.createElement('div');
+                    card.className='forecast-card';
+                    card.innerHTML=`<p class="forecast-day">${m.month}</p>
+                    <p class="forecast-day">${m.avgMax}°/${m.avgMin}°C, ${m.totalPrecip} mm</p>`;
+                    content.appendChild(card);
+                });
+            } else {
+                // Forecast data not ready yet - show empty message or select weekly by default
+                if (!currentWeekly && !currentClimate) {
+                    // No data loaded yet - switch to weekly and show empty state
+                    if (forecastSelect) {
+                        forecastSelect.value = 'weekly';
+                    }
+                    if (window.getTranslation && typeof window.getTranslation === 'function') {
+                        const translated = window.getTranslation('weather.weeklyForecast');
+                        if (translated && translated !== 'weather.weeklyForecast') {
+                            title.textContent = translated;
+                        } else {
+                            title.textContent = '7-Day Forecast';
+                        }
+                    } else {
+                        title.textContent = '7-Day Forecast';
+                    }
+                    const selectCityText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                        ? window.getTranslation('weather.selectCityToViewForecast') || 'Select a city to view forecast'
+                        : 'Select a city to view forecast';
+                    content.innerHTML = '<p style="text-align: center; padding: 20px; color: rgba(255,255,255,0.7);">' + selectCityText + '</p>';
+                } else if (type === 'weekly' && !currentWeekly) {
+                    if (window.getTranslation && typeof window.getTranslation === 'function') {
+                        const translated = window.getTranslation('weather.weeklyForecast');
+                        if (translated && translated !== 'weather.weeklyForecast') {
+                            title.textContent = translated;
+                        } else {
+                            title.textContent = '7-Day Forecast';
+                        }
+                    } else {
+                        title.textContent = '7-Day Forecast';
+                    }
+                    content.innerHTML = '<p style="text-align: center; padding: 20px; color: rgba(255,255,255,0.7);">Loading forecast data...</p>';
+                } else if (type === 'climate' && !currentClimate) {
+                    if (window.getTranslation && typeof window.getTranslation === 'function') {
+                        const translated = window.getTranslation('weather.climateOutlook');
+                        if (translated && translated !== 'weather.climateOutlook') {
+                            title.textContent = translated;
+                        } else {
+                            title.textContent = '3-Month Climate Outlook';
+                        }
+                    } else {
+                        title.textContent = '3-Month Climate Outlook';
+                    }
+                    content.innerHTML = '<p style="text-align: center; padding: 20px; color: rgba(255,255,255,0.7);">Loading climate data...</p>';
+                }
+            }
+        }
+
+        function updatePanel(name, weather, info){
+            document.getElementById('weather-icon').textContent=info.icon;
+            
+            // Translate city name if translateCityName function is available
+            let displayName = name;
+            if (window.translateCityName && typeof window.translateCityName === 'function') {
+                displayName = window.translateCityName(name);
+            }
+            
+            // Update temperature
+            const tempEl = document.getElementById('temperature');
+            if (tempEl) {
+                const value = tempEl.querySelector('.value-text');
+                if (value) value.textContent = weather.temperature_2m;
+            }
+            
+            // Update humidity
+            const humidityEl = document.getElementById('humidity');
+            if (humidityEl) {
+                const value = humidityEl.querySelector('.value-text');
+                if (value) value.textContent = weather.relative_humidity_2m;
+            }
+            
+            // Update wind speed
+            const windSpeedEl = document.getElementById('wind-speed');
+            if (windSpeedEl) {
+                const value = windSpeedEl.querySelector('.value-text');
+                if (value) value.textContent = weather.wind_speed_10m;
+            }
+            
+            // Update rainfall
+            const rainfallEl = document.getElementById('rainfall');
+            if (rainfallEl) {
+                const value = rainfallEl.querySelector('.value-text');
+                if (value) value.textContent = weather.precipitation;
+            }
+            
+            // Update condition - translate the condition description
+            const conditionEl = document.getElementById('condition');
+            if (conditionEl) {
+                const value = conditionEl.querySelector('.value-text');
+                if (value) {
+                    value.textContent = translateWeatherCondition(info.desc);
+                }
+            }
+            const right=document.getElementById('right-panel');
+            // Always keep the default green gradient background - never change it
+            right.style.background = 'linear-gradient(to bottom, #a8e063, #56ab2f)';
+            right.classList.remove('dark-text');
+            
+            // Update forecast display with a small delay to ensure data is ready
+            // Try multiple times to ensure forecast displays even if data loads slowly
+            setTimeout(() => {
+                updateForecastDisplay();
+            }, 100);
+            setTimeout(() => {
+                updateForecastDisplay();
+            }, 500);
+            
+            // Sync weather data to plant tracking
+            syncWeatherToPlantTracking(name, weather);
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('location-modal');
+            if (e.target === modal) {
+                cancelLocationAccess();
+            }
+        });
+
+        // One representative location from each of the 9 provinces
+        const provinceRepresentatives = [
+            { name: "Anuradhapura", lat: 8.3114, lon: 80.4037, province: "North Central" },
+            { name: "Kurunegala", lat: 7.4833, lon: 80.3667, province: "North Western" },
+            { name: "Colombo", lat: 6.9271, lon: 79.8612, province: "Western" },
+            { name: "Kandy", lat: 7.2906, lon: 80.6337, province: "Central" },
+            { name: "Ratnapura", lat: 6.6828, lon: 80.4011, province: "Sabaragamuwa" },
+            { name: "Galle", lat: 6.0329, lon: 80.2170, province: "Southern" },
+            { name: "Badulla", lat: 6.9934, lon: 81.0550, province: "Uva" },
+            { name: "Batticaloa", lat: 7.7102, lon: 81.6924, province: "Eastern" },
+            { name: "Jaffna", lat: 9.6615, lon: 80.0255, province: "Northern" }
+        ];
+        
+        // Calculate criticality score (higher = more critical)
+        function getCriticalityScore(weather) {
+            let score = 0;
+            
+            // Critical weather codes (most severe first)
+            const extremeCodes = [95, 96, 99]; // Thunderstorm, thunderstorm with hail, thunderstorm with heavy hail
+            const severeCodes = [80, 81, 82]; // Freezing rain, heavy freezing drizzle, moderate/heavy freezing rain
+            const heavyRainCodes = [65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]; // Heavy rain
+            const stormCodes = [83, 84, 85, 86, 87]; // Slight/moderate/heavy snow, snow grains
+            const moderateRainCodes = [61, 62, 63, 64]; // Moderate rain
+            const lightRainCodes = [51, 52, 53, 54, 55, 56, 57, 58]; // Light rain/drizzle
+            
+            if (extremeCodes.includes(weather.weather_code)) score += 100;
+            else if (severeCodes.includes(weather.weather_code)) score += 80;
+            else if (heavyRainCodes.includes(weather.weather_code)) score += 60;
+            else if (stormCodes.includes(weather.weather_code)) score += 50;
+            else if (moderateRainCodes.includes(weather.weather_code)) score += 20;
+            else if (lightRainCodes.includes(weather.weather_code)) score += 5;
+            
+            // Precipitation severity
+            if (weather.precipitation > 20) score += 40;
+            else if (weather.precipitation > 10) score += 25;
+            else if (weather.precipitation > 5) score += 15;
+            else if (weather.precipitation > 0) score += 5;
+            
+            // Temperature extremes
+            if (weather.temperature_2m > 38) score += 30; // Very hot
+            else if (weather.temperature_2m > 35) score += 15; // Hot
+            else if (weather.temperature_2m < 10) score += 30; // Very cold
+            else if (weather.temperature_2m < 15) score += 15; // Cold
+            
+            // Wind severity (if available)
+            if (weather.wind_speed_10m > 50) score += 35; // Very strong wind
+            else if (weather.wind_speed_10m > 30) score += 20; // Strong wind
+            else if (weather.wind_speed_10m > 15) score += 10; // Moderate wind
+            
+            return score;
+        }
+        
+        // Fetch weather alerts from all provinces - ALWAYS show all provinces
+        async function fetchCriticalWeatherAlerts() {
+            const alerts = [];
+            
+            // Fetch weather from ALL 9 provinces - always include all
+            for (const loc of provinceRepresentatives) {
+                try {
+                    const weather = await getCurrentWeather(loc.lat, loc.lon);
+                    const info = weatherMap[weather.weather_code] || {desc: 'Unknown'};
+                    
+                    // Calculate criticality score
+                    const criticality = getCriticalityScore(weather);
+                    
+                    alerts.push({
+                        location: loc.name,
+                        province: loc.province,
+                        condition: info.desc, // Store original English condition for translation
+                        temp: weather.temperature_2m,
+                        code: weather.weather_code,
+                        precipitation: weather.precipitation || 0,
+                        windSpeed: weather.wind_speed_10m || 0,
+                        criticality: criticality
+                    });
+                } catch (error) {
+                    console.error(`Error fetching weather for ${loc.name}:`, error);
+                    // Add a placeholder to ensure province is represented
+                    alerts.push({
+                        location: loc.name,
+                        province: loc.province,
+                        condition: 'Data unavailable',
+                        temp: null,
+                        code: 0,
+                        precipitation: 0,
+                        windSpeed: 0,
+                        criticality: 0
+                    });
+                }
+            }
+            
+            // Sort by criticality (highest first), then by province name for consistency
+            alerts.sort((a, b) => {
+                if (b.criticality !== a.criticality) {
+                    return b.criticality - a.criticality; // Highest criticality first
+                }
+                return a.province.localeCompare(b.province);
+            });
+            
+            return alerts;
+        }
+        
+        // Update critical weather alert strip - always show all provinces
+        async function updateCriticalWeatherAlerts() {
+            const alertContent = document.getElementById('weather-alert-content');
+            
+            // Show loading message with blinking effect
+            const loadingText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                ? window.getTranslation('weather.loadingAlerts') 
+                : 'Loading quick weather alerts...';
+            alertContent.innerHTML = '<span class="loading-alert">' + loadingText + '</span>';
+            alertContent.style.animation = 'none';
+            
+            try {
+                const alerts = await fetchCriticalWeatherAlerts();
+                
+                if (alerts.length === 0) {
+                    const unavailableText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                        ? window.getTranslation('weather.dataUnavailable') 
+                        : 'Weather data unavailable';
+                    alertContent.innerHTML = '<span class="loading-alert">' + unavailableText + '</span>';
+                    return;
+                }
+                
+                // Create scrolling alert text - ALWAYS show all 9 provinces (critical or normal weather)
+                const alertTexts = alerts.map(alert => {
+                    // Icon based on criticality (colored dot)
+                    let criticalityIcon = '🌤️'; // Default/Normal
+                    if (alert.criticality >= 80) criticalityIcon = '🔴'; // Extreme
+                    else if (alert.criticality >= 50) criticalityIcon = '🟠'; // Severe
+                    else if (alert.criticality >= 30) criticalityIcon = '🟡'; // Moderate
+                    else if (alert.criticality >= 10) criticalityIcon = '🟢'; // Mild
+                    else if (alert.criticality > 0) criticalityIcon = '🌤️'; // Normal
+                    else criticalityIcon = '☀️'; // Clear/Sunny
+                    
+                    // Get weather icon from weatherMap
+                    const weatherInfo = weatherMap[alert.code] || { icon: '❓' };
+                    const weatherIcon = weatherInfo.icon;
+                    
+                    const tempText = alert.temp !== null ? `${Math.round(alert.temp)}°C` : 'N/A';
+                    const precipText = alert.precipitation > 0 ? ` ${alert.precipitation}mm` : '';
+                    const windText = alert.windSpeed > 20 ? ` ${Math.round(alert.windSpeed)}km/h` : '';
+                    
+                    // Translate province name if translateProvinceName function is available
+                    let displayProvince = alert.province;
+                    if (window.translateProvinceName && typeof window.translateProvinceName === 'function') {
+                        const translatedProvince = window.translateProvinceName(alert.province);
+                        if (translatedProvince && translatedProvince !== alert.province) {
+                            displayProvince = translatedProvince;
+                        }
+                    }
+                    
+                    // Translate city name in location if translateCityName function is available
+                    let displayLocation = alert.location;
+                    if (window.translateCityName && typeof window.translateCityName === 'function') {
+                        // Try to translate the location (might be a city name or contain a city name)
+                        const translated = window.translateCityName(alert.location);
+                        if (translated && translated !== alert.location) {
+                            displayLocation = translated;
+                        } else {
+                            // If location contains comma, try to translate the city part
+                            if (alert.location.includes(',')) {
+                                const parts = alert.location.split(',');
+                                const cityPart = parts[parts.length - 1].trim();
+                                const translatedCity = window.translateCityName(cityPart);
+                                if (translatedCity && translatedCity !== cityPart) {
+                                    parts[parts.length - 1] = translatedCity;
+                                    displayLocation = parts.join(', ');
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Translate condition using the stored code or condition text
+                    let displayCondition = alert.condition;
+                    if (alert.code !== undefined && weatherMap[alert.code]) {
+                        displayCondition = translateWeatherCondition(weatherMap[alert.code].desc);
+                    } else if (alert.condition) {
+                        displayCondition = translateWeatherCondition(alert.condition);
+                    }
+                    
+                    // Format: CriticalityIcon WeatherIcon Province: Location - Condition Temp Precipitation Wind
+                    return `${criticalityIcon} ${weatherIcon} ${displayProvince}: ${displayLocation} - ${displayCondition} ${tempText}${precipText}${windText}`;
+                });
+                
+                // Duplicate alerts multiple times for seamless infinite scrolling (like news ticker)
+                // Need enough duplicates to ensure seamless loop - duplicate 8 times for smooth scrolling
+                const duplicatedAlerts = [...alertTexts, ...alertTexts, ...alertTexts, ...alertTexts, ...alertTexts, ...alertTexts, ...alertTexts, ...alertTexts];
+                
+                const contentHtml = duplicatedAlerts.map((text, idx) => {
+                    return `<span>${text}</span>${idx < duplicatedAlerts.length - 1 ? '<span class="alert-separator">•</span>' : ''}`;
+                }).join('');
+                
+                alertContent.innerHTML = contentHtml;
+                
+                // Force reflow to restart animation properly
+                void alertContent.offsetWidth; // Trigger reflow
+                alertContent.style.animation = 'none';
+                requestAnimationFrame(() => {
+                    alertContent.style.animation = 'scrollAlert 500s linear infinite';
+                });
+            } catch (error) {
+                console.error('Error updating weather alerts:', error);
+                const errorText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                    ? window.getTranslation('weather.dataUnavailableRefresh') 
+                    : 'Weather data unavailable - Please refresh';
+                alertContent.innerHTML = '<span>' + errorText + '</span>';
+            }
+        }
+        
+        // Function to find exact location in subAreas
+        async function findAndShowExactLocation(areaName, cityName) {
+            if (!areaName || !cityName) return false;
+            
+            // Check if the area name exists in subAreas for the city
+            if (subAreas[cityName]) {
+                const exactArea = subAreas[cityName].find(area => 
+                    area.name.toLowerCase().includes(areaName.toLowerCase()) ||
+                    areaName.toLowerCase().includes(area.name.toLowerCase())
+                );
+                
+                if (exactArea) {
+                    // Found exact location, show it on map
+                    const subAreaSelect = document.getElementById('sub-area-select');
+                    subAreaSelect.value = exactArea.name;
+                    await searchSubArea();
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Initialize critical weather alerts after DOM is ready
+        document.addEventListener('DOMContentLoaded',()=> {
+            setTimeout(()=>map.invalidateSize(),100);
+            // Initialize city filter FIRST to store original English names before any translation
+            initializeCityFilter();
+            
+            // Store original English names for all existing options immediately
+            const citySelect = document.getElementById('city-select');
+            if (citySelect) {
+                Array.from(citySelect.querySelectorAll('option[data-province]')).forEach(opt => {
+                    // Ensure original English name is stored (value is always English)
+                    opt.dataset.originalCity = opt.value;
+                });
+            }
+            
+            // Clear weather display initially
+            clearWeatherDisplay();
+            // Initialize weather alerts
+            updateCriticalWeatherAlerts();
+            
+            // Ensure forecast-select has default value
+            const forecastSelect = document.getElementById('forecast-select');
+            if (forecastSelect && !forecastSelect.value) {
+                forecastSelect.value = 'weekly';
+            }
+            // Initialize forecast display
+            updateForecastDisplay();
+            
+            // Set default location based on selected plant
+            {% if selected_plant and selected_plant_city %}
+            const selectedCity = '{{ selected_plant_city }}';
+            const selectedArea = '{{ selected_plant_area }}' || '';
+            if (selectedCity && citySelect) {
+                // Set the city dropdown
+                citySelect.value = selectedCity;
+                // Trigger province filter update
+                filterCitiesByProvince();
+                // Load sub-areas for the city
+                filterSubAreasByCity();
+                
+                // Try to find exact location first, then fallback to city
+                setTimeout(async () => {
+                    if (selectedArea) {
+                        const found = await findAndShowExactLocation(selectedArea, selectedCity);
+                        if (!found) {
+                            // Fallback to city weather
+                            await searchCity();
+                        }
+                    } else {
+                        // No area specified, just show city weather
+                        await searchCity();
+                    }
+                }, 400);
+            }
+            {% endif %}
+            
+            // Translate province, city, and sub-area names in dropdowns on initial load (after storing originals)
+            // Use a small delay to ensure translation functions are ready
+            setTimeout(() => {
+                translateProvinceDropdowns();
+                translateCityDropdowns();
+                translateSubAreaDropdowns();
+            }, 100);
+        });
+        
+        // Also initialize immediately if DOM is already loaded
+        if (document.readyState === 'loading') {
+            // DOM is still loading, wait for DOMContentLoaded
+        } else {
+            // DOM is already loaded
+            updateCriticalWeatherAlerts();
+        }
+        
+        // Update every 10 minutes
+        setInterval(updateCriticalWeatherAlerts, 10 * 60 * 1000);
+
+        // Resize handlers
+        window.addEventListener('resize',()=> setTimeout(()=>map.invalidateSize(),100));
+        window.addEventListener('orientationchange',()=> setTimeout(()=>map.invalidateSize(),300));
+        
+        // Function to translate province names in dropdowns
+        function translateProvinceDropdowns() {
+            const provinceSelect = document.getElementById('province-select');
+            if (!provinceSelect) return;
+            
+            // Check current language
+            const currentLang = window.currentLanguage || localStorage.getItem('language') || 'en';
+            const isEnglish = currentLang === 'en';
+            
+            // Translate province select options
+            Array.from(provinceSelect.options).forEach(option => {
+                if (option.value && option.value !== '') {
+                    // Always use the value attribute as the original English name
+                    const originalEnglishName = option.value;
+                    
+                    // Store original English name if not already stored
+                    if (!option.dataset.originalProvince) {
+                        option.dataset.originalProvince = originalEnglishName;
+                    }
+                    
+                    if (isEnglish) {
+                        // Restore English name when in English mode
+                        // Format: "Province Name Province"
+                        option.textContent = originalEnglishName + ' Province';
+                    } else {
+                        // Translate when in other languages
+                        if (window.translateProvinceName && typeof window.translateProvinceName === 'function') {
+                            const translated = window.translateProvinceName(originalEnglishName);
+                            if (translated && translated !== originalEnglishName) {
+                                option.textContent = translated;
+                            } else {
+                                option.textContent = originalEnglishName + ' Province';
+                            }
+                        } else {
+                            option.textContent = originalEnglishName + ' Province';
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Function to translate city names in dropdowns
+        function translateCityDropdowns() {
+            const citySelect = document.getElementById('city-select');
+            if (!citySelect) return;
+            
+            // Check current language
+            const currentLang = window.currentLanguage || localStorage.getItem('language') || 'en';
+            const isEnglish = currentLang === 'en';
+            
+            // Translate city select options
+            Array.from(citySelect.options).forEach(option => {
+                if (option.value === '') {
+                    // Translate the "Select a city" placeholder option
+                    if (window.getTranslation && typeof window.getTranslation === 'function') {
+                        const translated = window.getTranslation('weather.selectCityOption');
+                        if (translated && translated !== 'weather.selectCityOption') {
+                            option.textContent = translated;
+                        } else {
+                            option.textContent = 'Select a city';
+                        }
+                    } else {
+                        option.textContent = 'Select a city';
+                    }
+                } else if (option.value && option.value !== '') {
+                    // Always use the value attribute as the original English name
+                    const originalEnglishName = option.value;
+                    
+                    // Store original English name if not already stored
+                    if (!option.dataset.originalCity) {
+                        option.dataset.originalCity = originalEnglishName;
+                    }
+                    
+                    if (isEnglish) {
+                        // Restore English name when in English mode
+                        option.textContent = originalEnglishName;
+                    } else {
+                        // Translate when in other languages
+                        if (window.translateCityName && typeof window.translateCityName === 'function') {
+                            const translated = window.translateCityName(originalEnglishName);
+                            if (translated && translated !== originalEnglishName) {
+                                option.textContent = translated;
+                            } else {
+                                option.textContent = originalEnglishName;
+                            }
+                        } else {
+                            option.textContent = originalEnglishName;
+                        }
+                    }
+                }
+            });
+            
+            // Translate sub-area dropdown will be handled separately
+        }
+        
+        // Function to translate sub-area names in dropdowns
+        function translateSubAreaDropdowns() {
+            const subAreaSelect = document.getElementById('sub-area-select');
+            if (!subAreaSelect) return;
+            
+            // Check current language
+            const currentLang = window.currentLanguage || localStorage.getItem('language') || 'en';
+            const isEnglish = currentLang === 'en';
+            
+            // Get translation for placeholder
+            const placeholderText = (window.getTranslation && typeof window.getTranslation === 'function') 
+                ? window.getTranslation('weather.selectSubArea') 
+                : 'Select a sub-area';
+            
+            // Translate placeholder option if it exists
+            if (subAreaSelect.options.length > 0 && subAreaSelect.options[0].value === '') {
+                subAreaSelect.options[0].textContent = placeholderText;
+            }
+            
+            // Translate sub-area options
+            Array.from(subAreaSelect.options).forEach(option => {
+                if (option.value && option.value !== '') {
+                    // Store original English name if not already stored
+                    if (!option.dataset.originalSubArea) {
+                        option.dataset.originalSubArea = option.value;
+                    }
+                    
+                    const originalEnglishName = option.dataset.originalSubArea || option.value;
+                    
+                    if (isEnglish) {
+                        // Restore English name when in English mode
+                        option.textContent = originalEnglishName;
+                    } else {
+                        // Translate full sub-area name if translateSubAreaName function is available
+                        if (window.translateSubAreaName && typeof window.translateSubAreaName === 'function') {
+                            const translated = window.translateSubAreaName(originalEnglishName);
+                            if (translated && translated !== originalEnglishName) {
+                                option.textContent = translated;
+                            } else {
+                                option.textContent = originalEnglishName;
+                            }
+                        } else {
+                            option.textContent = originalEnglishName;
+                        }
+                    }
+                }
+            });
+            
+            // Re-translate current city name in panel if displayed
+            const currentCityValue = citySelect.value;
+            if (currentCityValue && currentCityValue !== '') {
+                // Re-trigger updatePanel if a city is selected
+                if (typeof searchCity === 'function') {
+                    // Don't re-fetch, just update display
+                    const loc = defaultLocations.find(l => l.name === currentCityValue);
+                    if (loc) {
+                        // Get current weather data from panel
+                        const tempEl = document.getElementById('temperature');
+                        if (tempEl && tempEl.querySelector('.value-text').textContent !== '--') {
+                            // Weather data is already loaded, just update city name display
+                            // (City name might be in marker popups or other places)
+                            updateMapMarkerPopups();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Function to update map marker popups with translated city names
+        function updateMapMarkerPopups() {
+            if (!window.translateCityName || typeof window.translateCityName !== 'function') return;
+            
+            Object.keys(allMarkers).forEach(cityName => {
+                const marker = allMarkers[cityName];
+                if (marker && marker.getPopup) {
+                    const popup = marker.getPopup();
+                    if (popup) {
+                        const content = popup.getContent();
+                        if (content && typeof content === 'string') {
+                            // Extract city name from popup content and translate
+                            const translatedCity = window.translateCityName(cityName);
+                            // Update popup content with translated city name
+                            const newContent = content.replace(cityName, translatedCity);
+                            marker.setPopupContent(newContent);
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Re-translate weather labels and forecast titles when language changes
+        window.addEventListener('languageChanged', function() {
+            // Translate province names in dropdowns
+            translateProvinceDropdowns();
+            // Translate city names in dropdowns
+            translateCityDropdowns();
+            // Translate sub-area names in dropdowns
+            translateSubAreaDropdowns();
+            updateMapMarkerPopups();
+            
+            // Re-translate weather alert strip
+            updateCriticalWeatherAlerts();
+            
+            // Update sub-area marker popups
+            Object.keys(subAreaMarkers).forEach(subAreaName => {
+                const marker = subAreaMarkers[subAreaName];
+                if (marker && marker.getPopup) {
+                    const popup = marker.getPopup();
+                    if (popup) {
+                        const content = popup.getContent();
+                        if (content && typeof content === 'string' && window.translateCityName) {
+                            // Try to translate if it matches a city name
+                            const translated = window.translateCityName(subAreaName);
+                            if (translated && translated !== subAreaName) {
+                                const newContent = content.replace(subAreaName, translated);
+                                marker.setPopupContent(newContent);
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Re-translate current city name in panel if weather is displayed
+            const citySelect = document.getElementById('city-select');
+            const currentCityValue = citySelect ? citySelect.value : '';
+            if (currentCityValue && currentCityValue !== '') {
+                // Check if weather data is displayed
+                const tempEl = document.getElementById('temperature');
+                if (tempEl && tempEl.querySelector('.value-text').textContent !== '--') {
+                    // Weather is displayed, but panel doesn't show city name as heading
+                    // City name is only in dropdown and markers, which are already updated
+                }
+            }
+            
+            // Re-process climate data with new locale if available
+            if (rawClimateData) {
+                currentClimate = processClimateData(rawClimateData);
+            }
+            
+            // Re-translate forecast title and re-display forecast
+            updateForecastDisplay();
+            
+            // Weather labels with data-i18n should be automatically translated by the translation system
+        });
+    </script>
+{% endblock %}

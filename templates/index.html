@@ -1,0 +1,1231 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block title %}WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='plant_tracking/styles.css') }}">
+    <style>
+        .category-cards-grid {
+            align-items: start !important;
+            position: relative;
+        }
+        .category-card {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            color: white;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, justify-content 0.3s ease;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            height: auto;
+        }
+        
+        .category-card video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            filter: brightness(0.4) blur(0.5px);
+            transition: filter 0.3s ease;
+            pointer-events: none;
+            opacity: 0.9;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        
+        .category-card[data-category="grains-legumes"] video {
+            filter: brightness(0.6) blur(0.35px);
+        }
+        
+        .category-card[data-category="root-tuberous"] video {
+            filter: brightness(0.4) blur(0.5px) contrast(1.1) saturate(1.05);
+            transition: filter 0.5s ease;
+            object-fit: cover;
+            object-position: 0% center;
+            width: 200%;
+            height: 100%;
+            left: 0;
+            transform: none;
+            transform-origin: left center;
+        }
+        
+        .category-card:hover video {
+            filter: brightness(0.5) blur(0.3px);
+        }
+        
+        .category-card[data-category="grains-legumes"]:hover video {
+            filter: brightness(0.65) blur(0.25px);
+        }
+        
+        .category-card[data-category="root-tuberous"]:hover video {
+            filter: brightness(0.5) blur(0.3px) contrast(1.1) saturate(1.05);
+        }
+        
+        /* Dark overlay for better text visibility */
+        .category-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 0;
+            pointer-events: none;
+            border-radius: 15px;
+        }
+        
+        .category-card:hover::before {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        
+        .category-card > * {
+            position: relative;
+            z-index: 1;
+        }
+        .category-card:hover {
+            background: rgba(82, 170, 138, 0.8);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            justify-content: flex-start;
+        }
+        .category-plants {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                        opacity 0.5s ease-in-out 0.15s,
+                        margin-top 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            opacity: 0;
+            margin-top: 0;
+            padding-top: 0;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+        .category-card:hover .category-plants {
+            max-height: 800px;
+            opacity: 1;
+            margin-top: 15px;
+            display: grid !important;
+        }
+        .category-card.has-selected {
+            border: 3px solid #a8e063;
+            background: rgba(82, 170, 138, 0.95);
+        }
+        .category-card h4 {
+            color: #a8e063;
+            font-size: 1.4em;
+            margin-bottom: 0;
+            transition: margin-bottom 0.3s ease;
+        }
+        .category-card:hover h4 {
+            margin-bottom: 10px;
+        }
+        .category-card p {
+            color: #e0f2e9;
+            margin: 5px 0;
+        }
+        .plant-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px 15px;
+            margin: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            text-align: left;
+        }
+        .plant-item:hover {
+            background: rgba(168, 224, 99, 0.5);
+            transform: translateX(5px);
+        }
+        .plant-item.selected {
+            background: #a8e063;
+            color: #1a3d2e;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(168, 224, 99, 0.8);
+        }
+        .plant-location {
+            font-size: 0.85em;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 4px;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .plant-location img {
+            width: 18px;
+            height: 18px;
+            filter: drop-shadow(0 0 4px rgba(168, 224, 99, 0.8)) drop-shadow(0 0 8px rgba(168, 224, 99, 0.5));
+        }
+        .plant-item.selected .plant-location {
+            color: #1a3d2e;
+        }
+        .no-plants {
+            color: #e0f2e9;
+            font-style: italic;
+            padding: 15px;
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+        
+        /* Responsive: Single column on smaller screens */
+        @media (max-width: 600px) {
+            .category-plants {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% if greeting %}
+        <h1 class="welcome-greeting"><span id="greeting-text">{{ greeting }}</span>, <span id="username-text">{{ user.username }}</span>!</h1>
+    {% endif %}
+
+    <main>
+        <!-- Hero Section - Same for both users -->
+        <section class="hero">
+            <h1 data-i18n="home.heroTitle">Deliver Sustainable Farming Solutions to Every Life, Every Day</h1>
+            <p data-i18n="home.heroSubtitle">Get real-time weather, crop tips & instant alerts all in one place.</p>
+            <a href="{% if user.is_authenticated %}{{ url_for('weather') }}{% else %}{{ url_for('signup') }}{% endif %}" class="btn">
+                {% if user.is_authenticated %}<span data-i18n="home.checkWeatherNow">Check Weather Now</span>{% else %}<span data-i18n="home.joinNow">Join Now</span>{% endif %}
+            </a>
+        </section>
+
+        <!-- Features Section - Consistent layout, different content -->
+        <section class="features">
+            <h2>{% if user.is_authenticated %}<span data-i18n="home.dashboardTitle">Your Farming Dashboard</span>{% else %}<span data-i18n="home.keyFeatures">Key Features</span>{% endif %}</h2>
+            <p>{% if user.is_authenticated %}<span data-i18n="home.dashboardSubtitle">Welcome back! Check the latest weather updates and explore tools for crop planning.</span>{% else %}<span data-i18n="home.featuresSubtitle">Discover how our tools help farmers thrive with real-time weather insights.</span>{% endif %}</p>
+            
+            {% if user.is_authenticated %}
+                <!-- Category Cards for Logged-in Users -->
+                <div class="category-cards-container" style="max-width: 1200px; margin: 40px auto; padding: 0 20px; position: relative; z-index: 1;">
+                    <h3 style="color: white; text-align: center; margin-bottom: 30px; font-size: 1.8em;" data-i18n="home.selectPlantCategory">Select Your Plant Category</h3>
+                    <div class="category-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; margin-bottom: 40px; align-items: start; position: relative;">
+                        <div class="category-card" data-category="grains-legumes">
+                            <video preload="auto" muted loop playsinline webkit-playsinline>
+                                <source src="{{ url_for('static', filename='vids/Grains & Legumes.mp4') }}" type="video/mp4">
+                            </video>
+                            <h4 data-i18n="plant.grainsLegumes">Grains & Legumes</h4>
+                            <div class="category-plants">
+                                <!-- Plants will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="category-card" data-category="fruity-vegetables">
+                            <video preload="auto" muted loop playsinline webkit-playsinline>
+                                <source src="{{ url_for('static', filename='vids/Fruity Vegetables.mp4') }}" type="video/mp4">
+                            </video>
+                            <h4 data-i18n="plant.fruityVegetables">Fruity Vegetables</h4>
+                            <div class="category-plants">
+                                <!-- Plants will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="category-card" data-category="leafy-stem">
+                            <video preload="auto" muted loop playsinline webkit-playsinline>
+                                <source src="{{ url_for('static', filename='vids/Leafy & Stem Vegetables (3).mp4') }}" type="video/mp4">
+                            </video>
+                            <h4 data-i18n="plant.leafyStem">Leafy & Stem Vegetables</h4>
+                            <div class="category-plants">
+                                <!-- Plants will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="category-card" data-category="root-tuberous">
+                            <video preload="auto" muted loop playsinline webkit-playsinline>
+                                <source src="{{ url_for('static', filename='vids/Root & Tuberous Vegetables.mp4') }}" type="video/mp4">
+                            </video>
+                            <h4 data-i18n="plant.rootTuberous">Root & Tuberous Vegetables</h4>
+                            <div class="category-plants">
+                                <!-- Plants will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="features-grid">
+                {% if user.is_authenticated %}
+                    <!-- Logged-in user features -->
+                    <div class="feature-box">
+                        <h3 data-i18n="home.weatherForecast">Weather Forecast</h3>
+                        <p data-i18n="home.weatherForecastDesc">Access real-time weather data for all cities across Sri Lanka.</p>
+                        <a href="{{ url_for('weather') }}" class="feature-link" data-i18n="home.viewWeather">View Weather</a>
+                    </div>
+                    <div class="feature-box">
+                        <h3 data-i18n="home.smartAnalytics">Smart Analytics</h3>
+                        <p data-i18n="home.smartAnalyticsDesc">Get insights for crop planning, fertilizer optimization, and yield prediction.</p>
+                        <div class="analytics-buttons">
+                            <a href="{{ url_for('cost_profit_analysis') }}" class="analytics-btn" data-i18n="nav.costProfitTool">Cost-Profit Tool</a>
+                            <a href="{{ url_for('analytics') }}" class="analytics-btn" data-i18n="nav.futureAnalyse">Future Analyse</a>
+                        </div>
+                    </div>
+                    <div class="feature-box">
+                        <h3 data-i18n="home.smsAlerts">SMS Alerts</h3>
+                        <p data-i18n="home.smsAlertsDesc">Get daily weather alerts and plant protection advice via SMS on your phone. Works on all phones!</p>
+                        <a href="{{ url_for('sms_alerts') }}" class="feature-link" data-i18n="home.subscribeNow">Subscribe Now</a>
+                    </div>
+                {% else %}
+                    <!-- Non-logged-in user features -->
+                    <div class="feature-box">
+                        <h3 data-i18n="home.weatherForecast">Weather Forecast</h3>
+                        <p data-i18n="home.weatherForecastDescGuest">Stay updated on local weather to plan your farming activities smartly.</p>
+                        <a href="{{ url_for('signup') }}" class="feature-link" data-i18n="home.getStarted">Get Started</a>
+                    </div>
+                    <div class="feature-box">
+                        <h3 data-i18n="home.smartAnalytics">Smart Analytics</h3>
+                        <p data-i18n="home.smartAnalyticsDesc">Get insights for crop planning, fertilizer optimization, and yield prediction.</p>
+                        <a href="{{ url_for('signup') }}" class="feature-link" data-i18n="home.joinNowFeature">Join Now</a>
+                    </div>
+                    <div class="feature-box">
+                        <h3 data-i18n="home.smsAlerts">SMS Alerts</h3>
+                        <p data-i18n="home.smsAlertsDescGuest">Get SMS updates on market trends, rain alerts, and more directly to your phone.</p>
+                        <a href="{{ url_for('signup') }}" class="feature-link" data-i18n="home.signUp">Sign Up</a>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Weather Search Section - Only for logged-in users -->
+        {% if user.is_authenticated %}
+            <section class="search-section">
+                <h2 data-i18n="home.quickWeatherCheck">Quick Weather Check</h2>
+                <form method="POST" action="{{ url_for('home') }}">
+                    <select name="city" required>
+                        <option value="" disabled selected data-i18n="weather.selectCityOption">Select a city</option>
+                        <option value="Anuradhapura">Anuradhapura</option>
+                        <option value="Mihintale">Mihintale</option>
+                        <option value="Kekirawa">Kekirawa</option>
+                        <option value="Medawachchiya">Medawachchiya</option>
+                        <option value="Habarana">Habarana</option>
+                        <option value="Eppawala">Eppawala</option>
+                        <option value="Galenbindunuwewa">Galenbindunuwewa</option>
+                        <option value="Galnewa">Galnewa</option>
+                        <option value="Horowupotana">Horowupotana</option>
+                        <option value="Kahatagasdigiliya">Kahatagasdigiliya</option>
+                        <option value="Bulnewa">Bulnewa</option>
+                        <option value="Ganewalpola">Ganewalpola</option>
+                    </select>
+                    <button type="submit" data-i18n="weather.getWeather">Get Weather</button>
+                </form>
+            </section>
+
+            <!-- Weather Results - Only for logged-in users -->
+            {% if search_result %}
+                <section class="weather-container">
+                    <h2 data-i18n="weather.current">Current Weather</h2>
+                    <div class="forecast-card">
+                        <h3 data-i18n="weather.currentConditions">Current Conditions</h3>
+                        <p><span class="weather-icon {{ weather_code_to_icon(search_result.current.weather_code) }}"></span>
+                           <span data-i18n="weather.condition">Condition</span>: {{ search_result.current.weather_code | weather_code_to_text }}</p>
+                        <p><span data-i18n="weather.temperature">Temperature</span>: {{ search_result.current.temperature_2m }} °C</p>
+                        <p><span data-i18n="weather.humidity">Humidity</span>: {{ search_result.current.relative_humidity_2m }} %</p>
+                        <p><span data-i18n="weather.windSpeed">Wind Speed</span>: {{ search_result.current.wind_speed_10m }} km/h</p>
+                        <p><span data-i18n="weather.rainfall">Rainfall</span>: {{ search_result.current.precipitation }} mm</p>
+                    </div>
+                </section>
+            {% endif %}
+        {% endif %}
+
+
+
+        <!-- Feedback Section with Man Picture - Same for both users -->
+        <section class="feedback-section">
+            <h2 data-i18n="home.farmerFeedback">Farmer Feedback: Before and After</h2>
+            <div class="feedback-with-photo-container">
+                <div class="feedback-cards-vertical">
+                    <div class="feedback-card">
+                        <h3 data-i18n="home.feedbackSunilName">Sunil Perera - Anuradhapura</h3>
+                        <p><strong data-i18n="home.feedbackBefore">Before:</strong> <span data-i18n="home.feedbackSunil">"I struggled to plan planting due to unpredictable weather, often losing crops to sudden rains."</span></p>
+                    </div>
+                    <div class="feedback-card">
+                        <h3 data-i18n="home.feedbackKamalName">Kamal Wijesinghe - Kekirawa</h3>
+                        <p><strong data-i18n="home.feedbackBefore">Before:</strong> <span data-i18n="home.feedbackKamal">"Market price changes caught me off guard, affecting my profits."</span></p>
+                    </div>
+                </div>
+                <div class="man-photo-vertical">
+                    <div class="man-picture-container">
+                        <img src="{{ url_for('static', filename='images/man.jpg') }}" alt="Professional Farmer" class="man-picture">
+                        <div class="man-picture-overlay">
+                            <h3 data-i18n="home.expertGuidance">Expert Agricultural Guidance</h3>
+                            <p data-i18n="home.expertGuidanceDesc">Our team of experienced agricultural experts provides personalized guidance to help you maximize your farming success.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to Action Section - Different for each user type -->
+        <section class="cta-section">
+            {% if user.is_authenticated %}
+                <h2 data-i18n="home.readyToPlan">Ready to Plan Your Next Harvest?</h2>
+                <p data-i18n="home.readyToPlanDesc">Access advanced weather forecasting and agricultural tools to maximize your yield.</p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('weather') }}" class="btn btn-primary" data-i18n="home.viewWeatherMap">View Weather Map</a>
+                    <a href="{{ url_for('support') }}" class="btn btn-secondary" data-i18n="home.getSupport">Get Support</a>
+                </div>
+            {% else %}
+                <h2 data-i18n="home.joinThousands">Join Thousands of Successful Farmers</h2>
+                <p data-i18n="home.joinThousandsDesc">Start your journey towards better farming decisions with WeatherGuard Harvest.</p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('signup') }}" class="btn btn-primary" data-i18n="home.createAccount">Create Account</a>
+                    <a href="{{ url_for('login_selector') }}" class="btn btn-secondary" data-i18n="home.signIn">Sign In</a>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+
+    {% if user.is_authenticated %}
+    <!-- Floating Plant Tracking mini widget -->
+    <div class="plant-widget" aria-live="polite">
+        <div class="plant-widget-inner">
+            <!-- Plant bubble on top -->
+            <div class="glass-bubble" aria-hidden="true">
+                <div class="bubble-inner">
+                    <img id="mini-stage-1" class="plant-stage" alt="Seed" src="{{ url_for('static', filename='plant_tracking/assets/seed.png') }}" />
+                    <img id="mini-stage-2" class="plant-stage" alt="Seedling" src="{{ url_for('static', filename='plant_tracking/assets/seedling.png') }}" />
+                    <img id="mini-stage-3" class="plant-stage" alt="Small plant" src="{{ url_for('static', filename='plant_tracking/assets/small-plant.png') }}" />
+                    <img id="mini-stage-4" class="plant-stage" alt="Small plant grown" src="{{ url_for('static', filename='plant_tracking/assets/small-plant-grown.png') }}" />
+                    <img id="mini-stage-5" class="plant-stage" alt="Grown plant" src="{{ url_for('static', filename='plant_tracking/assets/grown.png') }}" />
+                    <img id="mini-stage-6" class="plant-stage" alt="Fully grown with flowers" src="{{ url_for('static', filename='plant_tracking/assets/fully-grown-flower.png') }}" />
+                    <div class="soil-shadow"></div>
+                </div>
+                <div class="bubble-gloss"></div>
+                <div class="bubble-caustics"></div>
+            </div>
+
+            <!-- No fold button needed - hover to unfold -->
+            
+            <!-- Open Tracker button - visible when folded (under bubble) -->
+            <a class="mini-btn widget-tracker-btn-folded" href="{{ url_for('plant_tracking') }}" data-i18n="plant.openTracker">Open Tracker</a>
+
+            <!-- Panel content (hidden when folded) -->
+            <div class="panel-content">
+                <div class="plant-mini-details">
+                    <div class="mini-row">
+                        <strong id="mini-plant-name">—</strong>
+                    </div>
+                    <div class="mini-row" id="mini-plant-location-row" style="display: none;">
+                        <span style="font-size: 0.7rem; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 4px;"><img src="/static/images/Location_pin .ico" style="width: 16px; height: 16px; filter: drop-shadow(0 0 3px rgba(168, 224, 99, 0.8)) drop-shadow(0 0 6px rgba(168, 224, 99, 0.5));" alt="Location"> <span id="mini-plant-location">—</span></span>
+                    </div>
+                    <div class="mini-row">
+                        <span data-i18n="plant.age">Age</span><strong id="mini-age-days">—</strong>
+                        <span style="margin-left:10px;" data-i18n="plant.stage">Stage</span><strong id="mini-stage-name">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span data-i18n="plant.nextMilestone">Next</span><strong id="mini-next-milestone">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span>Temp</span><strong id="mini-temp">—</strong>
+                        <span style="margin-left:10px;">Hum</span><strong id="mini-humidity">—</strong>
+                    </div>
+                    
+                    <!-- Essential sections -->
+                    <div class="mini-section">
+                        <h4 data-i18n="plant.essentialTasks">Essential Tasks</h4>
+                        <ul id="mini-treatments" class="mini-treatments"></ul>
+                    </div>
+                    
+                    <div class="mini-section">
+                        <h4 data-i18n="plant.yourTodos">Your Todos</h4>
+                        <form id="mini-todo-form" class="mini-todo-form">
+                            <input id="mini-todo-input" type="text" data-i18n="plant.addTask" placeholder="Add task..." />
+                            <button type="submit">+</button>
+                        </form>
+                        <!-- Open Tracker button -->
+                        <a class="mini-btn widget-tracker-btn" href="{{ url_for('plant_tracking') }}" data-i18n="plant.openTracker">Open Tracker</a>
+                        <ul id="mini-todo-list" class="mini-todo-list"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='plant_tracking/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='vegetables_data.js') }}"></script>
+    <script>
+        // User's plants data from server
+        const userPlants = {{ user_plants | tojson if user.is_authenticated else '{}' }};
+        let selectedPlant = null;
+        let selectedCategory = null;
+        let selectedPlantLocation = null;
+
+        // Load plants on hover
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const category = this.dataset.category;
+                const plantsDiv = this.querySelector('.category-plants');
+                if (plantsDiv.children.length === 0) {
+                    loadCategoryPlants(category, plantsDiv);
+                }
+            });
+        });
+
+        function loadCategoryPlants(category, container) {
+            const plants = userPlants[category] || [];
+            
+            if (plants.length === 0) {
+                container.innerHTML = '<div class="no-plants">No plants selected in this category. <a href="/profile" style="color: #a8e063;">Add plants to your profile</a></div>';
+                return;
+            }
+            
+            // Function to apply translations to loaded plants
+            function applyTranslations() {
+                container.querySelectorAll('.plant-item').forEach(item => {
+                    const strongEl = item.querySelector('strong');
+                    const locationEl = item.querySelector('.plant-location');
+                    
+                    // Translate vegetable name
+                    if (strongEl && window.getTranslation && typeof window.getTranslation === 'function') {
+                        const originalName = strongEl.getAttribute('data-original-name');
+                        if (originalName) {
+                            const translated = translateVegetableName(originalName);
+                            if (translated && translated !== originalName) {
+                                strongEl.textContent = translated;
+                            }
+                        }
+                    }
+                    
+                    // Translate city name in location
+                    if (locationEl && window.translateCityName && typeof window.translateCityName === 'function') {
+                        const originalCity = locationEl.getAttribute('data-original-city');
+                        if (originalCity) {
+                            const areaName = locationEl.getAttribute('data-original-area') || '';
+                            let displayLocationText = '';
+                            
+                            if (areaName && areaName !== originalCity) {
+                                // Both area and city
+                                const translatedCity = window.translateCityName(originalCity);
+                                displayLocationText = `${areaName}, ${translatedCity}`;
+                            } else {
+                                // Just city
+                                displayLocationText = window.translateCityName(originalCity);
+                            }
+                            
+                            const icon = locationEl.querySelector('img');
+                            if (icon) {
+                                locationEl.innerHTML = icon.outerHTML + ' ' + displayLocationText;
+                            } else {
+                                locationEl.textContent = displayLocationText;
+                            }
+                        }
+                    }
+                });
+            }
+            
+            container.innerHTML = plants.map(plant => {
+                // Get original location text (without translation) for the onclick handler
+                const originalLocationText = getLocationText(plant, false);
+                
+                // Store original plant name for translation
+                const originalPlantName = plant.name;
+                
+                // Try to translate immediately if functions are available
+                let displayName = plant.name;
+                if (window.getTranslation && typeof window.getTranslation === 'function') {
+                    const translated = translateVegetableName(plant.name);
+                    if (translated !== plant.name) {
+                        displayName = translated;
+                    }
+                }
+                
+                // Build location text - always use original English for data attributes, translate for display
+                let displayLocationText = '';
+                const originalCity = plant.city || '';
+                const originalArea = plant.area_name || '';
+                
+                // Build display text with translation
+                if (originalArea && originalCity && originalArea !== originalCity) {
+                    // Both area and city, translate city
+                    let translatedCity = originalCity;
+                    if (window.translateCityName && typeof window.translateCityName === 'function') {
+                        translatedCity = window.translateCityName(originalCity);
+                    }
+                    displayLocationText = `${originalArea}, ${translatedCity}`;
+                } else if (originalCity) {
+                    // Just city - MUST translate
+                    if (window.translateCityName && typeof window.translateCityName === 'function') {
+                        displayLocationText = window.translateCityName(originalCity);
+                    } else {
+                        displayLocationText = originalCity;
+                    }
+                } else if (originalArea) {
+                    // Just area
+                    displayLocationText = originalArea;
+                }
+                
+                return `
+                    <div class="plant-item" onclick="selectPlant('${category}', '${plant.name.replace(/'/g, "\\'")}', '${originalLocationText.replace(/'/g, "\\'")}', '${plant.city || ''}', '${plant.area_name || ''}', this)">
+                        <strong data-original-name="${originalPlantName}">${displayName}</strong>
+                        ${displayLocationText ? `<div class="plant-location" data-original-city="${originalCity}" data-original-area="${originalArea}"><img src="/static/images/Location_pin .ico" alt="Location"> ${displayLocationText}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            // Apply translations after a short delay to ensure translation functions are ready
+            setTimeout(applyTranslations, 100);
+            setTimeout(applyTranslations, 500);
+            
+            // Highlight already selected plant if exists
+            const savedPlant = sessionStorage.getItem('selectedPlant');
+            const savedCategory = sessionStorage.getItem('selectedCategory');
+            if (savedPlant && savedCategory === category) {
+                container.querySelectorAll('.plant-item').forEach(item => {
+                    const strongEl = item.querySelector('strong');
+                    const originalName = strongEl ? strongEl.getAttribute('data-original-name') : null;
+                    if (originalName === savedPlant || (strongEl && strongEl.textContent.includes(savedPlant))) {
+                        item.classList.add('selected');
+                        const card = container.closest('.category-card');
+                        if (card) {
+                            card.classList.add('has-selected');
+                        }
+                    }
+                });
+            }
+        }
+
+        function getLocationText(plant, translate = true) {
+            const parts = [];
+            if (plant.area_name) parts.push(plant.area_name);
+            if (plant.city) {
+                // Only translate if requested and function is available
+                let cityName = plant.city;
+                if (translate && window.translateCityName && typeof window.translateCityName === 'function') {
+                    cityName = window.translateCityName(plant.city);
+                }
+                parts.push(cityName);
+            }
+            return parts.join(', ') || '';
+        }
+
+        function selectPlant(category, plantName, locationText, city, areaName, element) {
+            // Remove previous selection
+            document.querySelectorAll('.plant-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            document.querySelectorAll('.category-card').forEach(card => {
+                card.classList.remove('has-selected');
+            });
+            
+            // Mark as selected
+            element.classList.add('selected');
+            selectedPlant = plantName;
+            selectedCategory = category;
+            selectedPlantLocation = locationText;
+            
+            // Highlight the category card
+            const selectedCard = element.closest('.category-card');
+            if (selectedCard) {
+                selectedCard.classList.add('has-selected');
+            }
+            
+            // Store in sessionStorage for other pages
+            sessionStorage.setItem('selectedPlant', plantName);
+            sessionStorage.setItem('selectedCategory', category);
+            sessionStorage.setItem('selectedPlantLocation', locationText);
+            sessionStorage.setItem('selectedPlantCity', city);
+            sessionStorage.setItem('selectedPlantArea', areaName);
+            
+            // Send to server to store in session
+            fetch('/set-selected-plant', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    plant: plantName,
+                    category: category,
+                    location: locationText,
+                    city: city,
+                    area_name: areaName
+                })
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      console.log('Selected plant stored in session');
+                      // Update mini widget location display
+                      const miniLocationEl = document.getElementById('mini-plant-location');
+                      const miniLocationRow = document.getElementById('mini-plant-location-row');
+                      if (miniLocationEl && miniLocationRow && locationText) {
+                          // Translate city name in location text
+                          let translatedLocation = locationText;
+                          if (window.translateCityName && typeof window.translateCityName === 'function') {
+                              if (locationText.includes(',')) {
+                                  const parts = locationText.split(',');
+                                  const cityPart = parts[parts.length - 1].trim();
+                                  const translatedCity = window.translateCityName(cityPart);
+                                  if (translatedCity && translatedCity !== cityPart) {
+                                      parts[parts.length - 1] = translatedCity;
+                                      translatedLocation = parts.join(', ');
+                                  }
+                              } else {
+                                  const translated = window.translateCityName(locationText);
+                                  if (translated && translated !== locationText) {
+                                      translatedLocation = translated;
+                                  }
+                              }
+                          }
+                          miniLocationEl.textContent = translatedLocation;
+                          miniLocationRow.style.display = 'flex';
+                      }
+                  }
+              });
+        }
+
+        // Initialize: Load saved selection on page load
+        {% if user.is_authenticated %}
+        // Initialize category card videos
+        function initializeCategoryVideos() {
+            document.querySelectorAll('.category-card video').forEach(video => {
+                // Set playback speed - slower for all videos
+                const card = video.closest('.category-card');
+                const isRootTuberous = card && card.dataset.category === 'root-tuberous';
+                
+                // Set playback speed - slower for Root & Tuberous
+                if (isRootTuberous) {
+                    video.playbackRate = 0.7; // Slower for Root & Tuberous
+                } else {
+                    video.playbackRate = 0.7; // Same speed for all
+                }
+                
+                // Improve video quality settings
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.setAttribute('preload', 'auto');
+                
+                // Enable hardware acceleration for smoother playback
+                video.style.transform = 'translateZ(0)';
+                video.style.willChange = 'transform';
+                
+                // Load and show first frame
+                video.addEventListener('loadeddata', function() {
+                    video.pause();
+                    video.currentTime = 0;
+                });
+                
+                // Ensure first frame is loaded
+                if (video.readyState >= 2) {
+                    video.pause();
+                    video.currentTime = 0;
+                } else {
+                    video.load();
+                }
+                
+                // Play on hover
+                card.addEventListener('mouseenter', function() {
+                    video.play().catch(e => console.log('Video play error:', e));
+                });
+                
+                // Pause when not hovered
+                card.addEventListener('mouseleave', function() {
+                    video.pause();
+                    video.currentTime = 0; // Reset to beginning
+                });
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize category videos
+            initializeCategoryVideos();
+            
+            // Check if there's a saved selection and highlight it
+            const savedPlant = sessionStorage.getItem('selectedPlant');
+            const savedCategory = sessionStorage.getItem('selectedCategory');
+            if (savedPlant && savedCategory) {
+                selectedPlant = savedPlant;
+                selectedCategory = savedCategory;
+                selectedPlantLocation = sessionStorage.getItem('selectedPlantLocation') || '';
+                
+                // Pre-load the category to show selection
+                const card = document.querySelector(`.category-card[data-category="${savedCategory}"]`);
+                if (card) {
+                    const plantsDiv = card.querySelector('.category-plants');
+                    loadCategoryPlants(savedCategory, plantsDiv);
+                    // Trigger hover to show plants
+                    setTimeout(() => {
+                        card.classList.add('has-selected');
+                    }, 100);
+                }
+            }
+        });
+        {% endif %}
+        
+        // Update mini widget on page load and periodically
+        if (typeof syncWidgetFromStorage === 'function') {
+            // Update immediately
+            syncWidgetFromStorage();
+            // Update every 10 seconds
+            setInterval(syncWidgetFromStorage, 10000);
+        } else if (typeof updateMiniWidget === 'function') {
+            // Update immediately
+            updateMiniWidget();
+            // Update every 10 seconds
+            setInterval(updateMiniWidget, 10000);
+        }
+        
+        // Listen for category changes from plant tracking page (via localStorage)
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'plant_category') {
+                // Category changed on another page, update mini widget
+                if (typeof syncWidgetFromStorage === 'function') {
+                    syncWidgetFromStorage();
+                } else if (typeof updateMiniWidget === 'function') {
+                    updateMiniWidget();
+                }
+            }
+        });
+        
+        // Also listen for custom events (for same-page updates)
+        window.addEventListener('categoryChanged', function() {
+            if (typeof syncWidgetFromStorage === 'function') {
+                syncWidgetFromStorage();
+            } else if (typeof updateMiniWidget === 'function') {
+                updateMiniWidget();
+            }
+        });
+        
+        // Translate greeting
+        function translateGreeting() {
+            const greetingText = document.getElementById('greeting-text');
+            if (!greetingText) return;
+            
+                // Store original greeting if not already stored
+                if (!greetingText.dataset.originalGreeting) {
+                    greetingText.dataset.originalGreeting = greetingText.textContent.trim();
+                }
+                const originalGreeting = greetingText.dataset.originalGreeting;
+            
+            // Wait for translation system to be ready
+            if (!window.getTranslation || typeof window.getTranslation !== 'function') {
+                // Retry after a short delay
+                setTimeout(translateGreeting, 100);
+                return;
+            }
+            
+                const greetingMap = {
+                    'Good Morning': 'greeting.goodMorning',
+                    'Good Afternoon': 'greeting.goodAfternoon',
+                    'Good Evening': 'greeting.goodEvening',
+                    'Good Night': 'greeting.goodNight'
+                };
+            
+                const translationKey = greetingMap[originalGreeting];
+                if (translationKey) {
+                    const translated = window.getTranslation(translationKey);
+                if (translated && translated !== translationKey && translated !== originalGreeting) {
+                        greetingText.textContent = translated;
+                    console.log('Greeting translated:', originalGreeting, '->', translated);
+                }
+            }
+        }
+        
+        // Translate vegetable names
+        function translateVegetableName(englishName) {
+            if (!window.getTranslation || !englishName || englishName === '—') return englishName;
+            
+            // Extract base name (remove parentheses content like "Beans (Bonchi)" -> "Beans")
+            let baseName = englishName.split('(')[0].trim();
+            
+            // Map vegetable names to translation keys (same as in app.js)
+            const vegetableMap = {
+                // Grains & Legumes
+                'Beans': 'vegetable.beans',
+                'Black Gram': 'vegetable.blackGram',
+                'Chickpeas': 'vegetable.chickpeas',
+                'Corn': 'vegetable.corn',
+                'Drumstick': 'vegetable.drumstick',
+                'Fenugreek': 'vegetable.fenugreek',
+                'Green Gram': 'vegetable.greenGram',
+                'Yard Long Beans': 'vegetable.yardLongBeans',
+                'Lentils': 'vegetable.lentils',
+                'Okra': 'vegetable.okra',
+                'Soybean': 'vegetable.soybean',
+                'Cowpea': 'vegetable.cowpea',
+                'Pigeon Pea': 'vegetable.pigeonPea',
+                'Lima Beans': 'vegetable.limaBeans',
+                'Winged Beans': 'vegetable.wingedBeans',
+                'Horse Gram': 'vegetable.horseGram',
+                'Rice': 'vegetable.rice',
+                'Finger Millet': 'vegetable.fingerMillet',
+                'Maize': 'vegetable.maize',
+                'Sorghum': 'vegetable.sorghum',
+                // Fruity Vegetables
+                'Tomato': 'vegetable.tomato',
+                'Ash Plantain': 'vegetable.ashPlantain',
+                'Breadfruit': 'vegetable.breadfruit',
+                'Jackfruit': 'vegetable.jackfruit',
+                'Tender Jackfruit': 'vegetable.tenderJackfruit',
+                'Capsicum': 'vegetable.capsicum',
+                'Green Chilies': 'vegetable.greenChilies',
+                'Red Chilies': 'vegetable.redChilies',
+                'Bell Pepper': 'vegetable.bellPepper',
+                'Brinjal': 'vegetable.brinjal',
+                'Eggplant': 'vegetable.brinjal',
+                'Thai Eggplant': 'vegetable.thaiEggplant',
+                'Cucumber': 'vegetable.cucumber',
+                'Bitter Gourd': 'vegetable.bitterGourd',
+                'Snake Gourd': 'vegetable.snakeGourd',
+                'Ridge Gourd': 'vegetable.ridgeGourd',
+                'Bottle Gourd': 'vegetable.bottleGourd',
+                'Ash Pumpkin': 'vegetable.ashPumpkin',
+                'Pumpkin': 'vegetable.pumpkin',
+                'Watermelon': 'vegetable.watermelon',
+                'Musk Melon': 'vegetable.muskMelon',
+                'Cantaloupe': 'vegetable.cantaloupe',
+                // Leafy & Stem Vegetables
+                'Cabbage': 'vegetable.cabbage',
+                'Lettuce': 'vegetable.lettuce',
+                'Spinach': 'vegetable.spinach',
+                'Amaranth Leaves': 'vegetable.amaranthLeaves',
+                'Gotukola': 'vegetable.gotukola',
+                'Kangkung': 'vegetable.kangkung',
+                'Water Spinach': 'vegetable.kangkung',
+                'Agati Leaves': 'vegetable.agatiLeaves',
+                'Mint': 'vegetable.mint',
+                'Curry Leaves': 'vegetable.curryLeaves',
+                'Coriander Leaves': 'vegetable.corianderLeaves',
+                'Fenugreek Leaves': 'vegetable.fenugreekLeaves',
+                'Mustard Greens': 'vegetable.mustardGreens',
+                'Radish Leaves': 'vegetable.radishLeaves',
+                'Beetroot Leaves': 'vegetable.beetrootLeaves',
+                'Sweet Potato Leaves': 'vegetable.sweetPotatoLeaves',
+                'Cassava Leaves': 'vegetable.cassavaLeaves',
+                'Pumpkin Leaves': 'vegetable.pumpkinLeaves',
+                'Drumstick Leaves': 'vegetable.drumstickLeaves',
+                'Moringa Leaves': 'vegetable.moringaLeaves',
+                'Rocket Leaves': 'vegetable.rocketLeaves',
+                'Basil': 'vegetable.basil',
+                'Spring Onions': 'vegetable.springOnions',
+                'Leeks': 'vegetable.leeks',
+                'Celery': 'vegetable.celery',
+                'Chinese Cabbage': 'vegetable.chineseCabbage',
+                'Pak Choi': 'vegetable.pakChoi',
+                'Bok Choy': 'vegetable.bokChoy',
+                // Root & Tuberous Vegetables
+                'Potato': 'vegetable.potato',
+                'Sweet Potato': 'vegetable.sweetPotato',
+                'Cassava': 'vegetable.cassava',
+                'Manioc': 'vegetable.cassava',
+                'Carrot': 'vegetable.carrot',
+                'Radish': 'vegetable.radish',
+                'Beetroot': 'vegetable.beetroot',
+                'Beet': 'vegetable.beetroot',
+                'Onion': 'vegetable.onion',
+                'Garlic': 'vegetable.garlic',
+                'Ginger': 'vegetable.ginger',
+                'Turmeric': 'vegetable.turmeric',
+                'Yam': 'vegetable.yam',
+                'Elephant Foot Yam': 'vegetable.elephantFootYam',
+                'Taro': 'vegetable.taro',
+                'Arrowroot': 'vegetable.arrowroot',
+                'Lotus Roots': 'vegetable.lotusRoots',
+                'Kohila': 'vegetable.kohila',
+                'Chinese Potato': 'vegetable.chinesePotato',
+                'Purple Yam': 'vegetable.purpleYam',
+                'Water Yam': 'vegetable.waterYam',
+                'Greater Yam': 'vegetable.greaterYam',
+                'Lesser Yam': 'vegetable.lesserYam',
+                'Turnip': 'vegetable.turnip',
+                'Parsnip': 'vegetable.parsnip',
+                'Daikon Radish': 'vegetable.daikonRadish'
+            };
+            
+            // Try exact match first
+            let translationKey = vegetableMap[baseName];
+            
+            // If no exact match, try case-insensitive match
+            if (!translationKey) {
+                const lowerBaseName = baseName.toLowerCase();
+                for (const [key, value] of Object.entries(vegetableMap)) {
+                    if (key.toLowerCase() === lowerBaseName) {
+                        translationKey = value;
+                        break;
+                    }
+                }
+            }
+            
+            if (translationKey) {
+                const translated = window.getTranslation(translationKey);
+                if (translated && translated !== translationKey) {
+                    return translated;
+            }
+            }
+            
+            return englishName;
+        }
+        
+        // Update displayPlants to use translations
+        const originalDisplayPlants = displayPlants;
+        displayPlants = function(category, plants) {
+            originalDisplayPlants(category, plants);
+            
+            // Translate vegetable names after display
+            setTimeout(() => {
+                const container = document.querySelector(`[data-category="${category}"] .category-plants`);
+                if (container && window.getTranslation && typeof window.getTranslation === 'function') {
+                    container.querySelectorAll('.plant-item strong').forEach(el => {
+                        const originalName = el.textContent.trim();
+                        const translated = translateVegetableName(originalName);
+                        if (translated && translated !== originalName) {
+                            el.textContent = translated;
+                        }
+                    });
+                }
+            }, 200);
+        };
+        
+        // Function to translate city names in dropdowns
+        function translateCityDropdowns() {
+            // Wait for translateCityName function to be available
+            if (!window.translateCityName || typeof window.translateCityName !== 'function') {
+                console.log('translateCityDropdowns: translateCityName function not available yet');
+                return false;
+            }
+            
+            // Translate city select options
+            const citySelect = document.querySelector('select[name="city"]');
+            if (!citySelect) {
+                console.log('translateCityDropdowns: City select not found');
+                return false;
+            }
+            
+            let translatedCount = 0;
+            Array.from(citySelect.options).forEach(option => {
+                if (option.value && option.value !== '') {
+                    // Store original English name if not already stored
+                    if (!option.dataset.originalCity) {
+                        option.dataset.originalCity = option.value;
+                    }
+                    
+                    // Translate using the stored original English name
+                    const originalCity = option.dataset.originalCity || option.value;
+                    const translated = window.translateCityName(originalCity);
+                    
+                    if (translated && translated !== originalCity) {
+                        option.textContent = translated;
+                        translatedCount++;
+                    } else {
+                        // If no translation available, keep original
+                        option.textContent = originalCity;
+                    }
+                }
+            });
+            
+            // Force browser to update the displayed selected option
+            if (citySelect.selectedIndex >= 0) {
+                const selectedOption = citySelect.options[citySelect.selectedIndex];
+                if (selectedOption && selectedOption.value) {
+                    // Make sure the selected option is also translated
+                    const originalCity = selectedOption.dataset.originalCity || selectedOption.value;
+                    const translated = window.translateCityName(originalCity);
+                    if (translated && translated !== originalCity) {
+                        selectedOption.textContent = translated;
+                    }
+                }
+            }
+            
+            console.log(`translateCityDropdowns: Translated ${translatedCount} city names`);
+            return true;
+        }
+        
+        // Re-translate vegetable names when language changes
+        window.addEventListener('languageChanged', function() {
+            // Re-translate city names in dropdowns
+            translateCityDropdowns();
+            
+            // Re-translate all category plants by reloading them to get fresh translations
+            // This ensures city names are translated from the original English data
+            document.querySelectorAll('.category-card').forEach(card => {
+                const category = card.dataset.category;
+                const plantsDiv = card.querySelector('.category-plants');
+                if (plantsDiv && plantsDiv.children.length > 0) {
+                    // Reload the plants to get fresh translations with current language
+                    // This will use the original English city names from userPlants data
+                    loadCategoryPlants(category, plantsDiv);
+                }
+            });
+            
+            // Also re-translate existing plant items using stored original data
+            document.querySelectorAll('.plant-item').forEach(item => {
+                const strongEl = item.querySelector('strong');
+                const locationEl = item.querySelector('.plant-location');
+                
+                // Re-translate vegetable name
+                if (strongEl && window.getTranslation && typeof window.getTranslation === 'function') {
+                    const originalName = strongEl.getAttribute('data-original-name');
+                    if (originalName) {
+                        const translated = translateVegetableName(originalName);
+                        if (translated && translated !== originalName) {
+                            strongEl.textContent = translated;
+                        }
+                    }
+                }
+                
+                // Re-translate city name in location
+                if (locationEl && window.translateCityName && typeof window.translateCityName === 'function') {
+                    const originalCity = locationEl.getAttribute('data-original-city');
+                    const originalArea = locationEl.getAttribute('data-original-area') || '';
+                    
+                    if (originalCity) {
+                        let displayLocationText = '';
+                        
+                        // Avoid duplicate if area equals city
+                        if (originalArea && originalArea !== originalCity) {
+                            const translatedCity = window.translateCityName(originalCity);
+                            displayLocationText = `${originalArea}, ${translatedCity}`;
+                        } else {
+                            displayLocationText = window.translateCityName(originalCity);
+                        }
+                        
+                        const icon = locationEl.querySelector('img');
+                        if (icon) {
+                            locationEl.innerHTML = icon.outerHTML + ' ' + displayLocationText;
+                        } else {
+                            locationEl.textContent = displayLocationText;
+                        }
+                    }
+                }
+            });
+        });
+        
+        // Translate city names on initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Store original city names in data attributes
+            const citySelect = document.querySelector('select[name="city"]');
+            if (citySelect) {
+                Array.from(citySelect.options).forEach(option => {
+                    if (option.value && option.value !== '') {
+                        option.dataset.originalCity = option.value;
+                    }
+                });
+                
+                // Listen for change events to translate selected option immediately
+                citySelect.addEventListener('change', function() {
+                    // Translate all options including the newly selected one
+                    setTimeout(function() {
+                        translateCityDropdowns();
+                    }, 50);
+                });
+            }
+            
+            // Try translating multiple times to ensure translation system is ready
+            function tryTranslateDropdown() {
+                const success = translateCityDropdowns();
+                if (!success) {
+                    // Retry if translation system not ready
+                    setTimeout(tryTranslateDropdown, 200);
+                }
+            }
+            
+            // Start trying after a short delay
+            setTimeout(tryTranslateDropdown, 100);
+            setTimeout(translateCityDropdowns, 500);
+            setTimeout(translateCityDropdowns, 1000);
+            setTimeout(translateCityDropdowns, 2000);
+        });
+        
+        // Translate greeting when page loads and language changes
+        function initGreetingTranslation() {
+            // Try multiple times to ensure translation happens
+            let attempts = 0;
+            const maxAttempts = 20;
+            function tryTranslate() {
+                attempts++;
+                if (window.getTranslation && typeof window.getTranslation === 'function') {
+                    translateGreeting();
+                } else if (attempts < maxAttempts) {
+                    setTimeout(tryTranslate, 200);
+                }
+            }
+            tryTranslate();
+        }
+        
+        // Initialize greeting translation
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(initGreetingTranslation, 100);
+                setTimeout(initGreetingTranslation, 500);
+                setTimeout(initGreetingTranslation, 1000);
+            });
+        } else {
+            setTimeout(initGreetingTranslation, 100);
+            setTimeout(initGreetingTranslation, 500);
+            setTimeout(initGreetingTranslation, 1000);
+        }
+        
+        // Re-translate when language changes
+        window.addEventListener('languageChanged', function() {
+            console.log('Language changed event received, translating greeting and cities...');
+            setTimeout(translateGreeting, 100);
+            // Also translate city dropdown - try multiple times to ensure it works
+            setTimeout(function() {
+                translateCityDropdowns();
+            }, 100);
+            setTimeout(function() {
+                translateCityDropdowns();
+            }, 300);
+            setTimeout(function() {
+                translateCityDropdowns();
+            }, 500);
+        });
+        
+        // Also listen for translation system ready
+        window.addEventListener('translationsReady', function() {
+            console.log('Translations ready event received, translating greeting and cities...');
+            setTimeout(translateGreeting, 100);
+            setTimeout(translateCityDropdowns, 100);
+            setTimeout(translateCityDropdowns, 300);
+        });
+        
+        // Also ensure translation happens after a delay when translations.js loads
+        (function checkAndTranslate() {
+            if (window.translateCityName && typeof window.translateCityName === 'function') {
+                // Already loaded, translate immediately
+                setTimeout(translateCityDropdowns, 100);
+                setTimeout(translateCityDropdowns, 500);
+                setTimeout(translateCityDropdowns, 1000);
+            } else {
+                // Wait for it to load
+                let checkCount = 0;
+                const maxChecks = 50;
+                const checkInterval = setInterval(function() {
+                    checkCount++;
+                    if (window.translateCityName && typeof window.translateCityName === 'function') {
+                        clearInterval(checkInterval);
+                        translateCityDropdowns();
+                        setTimeout(translateCityDropdowns, 200);
+                        setTimeout(translateCityDropdowns, 500);
+                    } else if (checkCount >= maxChecks) {
+                        clearInterval(checkInterval);
+                        console.warn('translateCityName function not found after waiting');
+                    }
+                }, 100);
+            }
+        })();
+        
+        // Also call when translatePage completes
+        const originalTranslatePage = window.translatePage;
+        if (originalTranslatePage) {
+            window.translatePage = function() {
+                const result = originalTranslatePage.apply(this, arguments);
+                setTimeout(translateGreeting, 100);
+                setTimeout(translateCityDropdowns, 100);
+                return result;
+            };
+        }
+    </script>
+    {% endif %}
+{% endblock %}

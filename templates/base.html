@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WeatherGuard Harvest{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+    <!-- Load translations.js with error handling and diagnostics -->
+    <script>
+        console.log('=== Loading translations.js ===');
+        var script = document.createElement('script');
+        script.src = "{{ url_for('static', filename='translations.js') }}";
+        script.onload = function() {
+            console.log('✓ translations.js loaded successfully');
+            console.log('window.setLanguage after load:', typeof window.setLanguage);
+            if (typeof window.setLanguage !== 'function') {
+                console.error('✗ translations.js loaded but setLanguage is not a function!');
+                console.error('This means there is likely a JavaScript error in translations.js');
+            }
+        };
+        script.onerror = function() {
+            console.error('✗ Failed to load translations.js - file not found or network error');
+            window.translationsLoadError = true;
+        };
+        document.head.appendChild(script);
+    </script>
+    
+    <!-- Inline translation system - works immediately -->
+    <script>
+        // Wait a moment for translations.js to load, then check
+        setTimeout(function() {
+            console.log('Checking translations.js status...');
+            console.log('window.setLanguage:', typeof window.setLanguage);
+            console.log('window.translationsLoadError:', window.translationsLoadError);
+            
+            if (!window.setLanguage && !window.translationsLoadError) {
+                console.warn('⚠ translations.js loaded but setLanguage not available - script may have errors');
+            }
+        }, 100);
+        
+        // Simple, reliable language switching that always works
+        window.switchLanguage = function(lang) {
+            console.log('=== switchLanguage called with:', lang, '===');
+            
+            // Save language preference immediately
+            localStorage.setItem('language', lang);
+            localStorage.setItem('lang', lang);
+            console.log('Language saved to localStorage:', lang);
+            
+            // Try to use translations.js if available
+            if (window.setLanguage && typeof window.setLanguage === 'function' && window.setLanguage !== window.switchLanguage) {
+                console.log('✓ Using translations.js setLanguage (no reload needed)');
+                try {
+                    var result = window.setLanguage(lang);
+                    console.log('setLanguage returned:', result);
+                    return;
+                } catch (e) {
+                    console.error('✗ Error calling setLanguage:', e);
+                    console.error('Error stack:', e.stack);
+                    // Fall through to reload
+                }
+            } else {
+                console.warn('⚠ setLanguage not available, will reload page');
+            }
+            
+            // Fallback: reload page to apply language
+            // The language is saved in localStorage, so on reload it will be applied
+            console.log('Reloading page to apply language change...');
+            window.location.reload();
+        };
+        
+        console.log('✓ switchLanguage function available');
+    </script>
+</head>
+<body>
+    <header>
+        <nav aria-label="Main navigation">
+            <a href="{{ url_for('home') }}" class="logo">
+                <img src="{{ url_for('static', filename='images/HLogo 01.png') }}" alt="WeatherGuard Harvest" class="logo-image">
+            </a>
+            <ul>
+                <!-- Home -->
+                <li><a href="{{ url_for('home') }}" {% if request.endpoint == 'home' %}aria-current="page"{% endif %} data-i18n="nav.home">Home</a></li>
+                
+                <!-- Weather with dropdown -->
+                <li class="dropdown">
+                    <a href="{{ url_for('weather') }}" class="dropdown-toggle" data-i18n="nav.weather">Weather</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('plant_tracking') }}" data-i18n="nav.plantTracking">Plant Tracking</a></li>
+                        <li><a href="{{ url_for('cost_profit_analysis') }}" data-i18n="nav.costProfitTool">Cost-Profit Tool</a></li>
+                        <li><a href="{{ url_for('analytics') }}" data-i18n="nav.futureAnalyse">Future Analyse</a></li>
+                        <li><a href="{{ url_for('sms_alerts') }}" data-i18n="nav.smsAlerts">SMS Alerts</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Support with dropdown -->
+                <li class="dropdown">
+                    <a href="{{ url_for('support') if current_user.is_authenticated else url_for('about_us') }}" class="dropdown-toggle" data-i18n="nav.support">Support</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('about_us') }}" data-i18n="nav.aboutUs">About Us</a></li>
+                        {% if current_user.is_authenticated %}
+                        <li><a href="{{ url_for('support') }}" data-i18n="nav.contactSupport">Contact Support</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                
+                <!-- User login/account section -->
+                {% if current_user.is_authenticated %}
+                <li class="dropdown user-account">
+                    <a href="#" class="dropdown-toggle user-account-link">
+                        {% if current_user.profile and current_user.profile.profile_picture %}
+                            <img src="{{ url_for('static', filename='uploads/profile_pictures/' + current_user.profile.profile_picture) }}" alt="Profile" class="profile-picture-nav">
+                        {% else %}
+                            <div class="profile-picture-nav default-avatar">{{ current_user.username[0].upper() }}</div>
+                        {% endif %}
+                        <span class="username-text">{{ current_user.username }}</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('profile') }}" data-i18n="nav.profile">Profile</a></li>
+                        <li><a href="{{ url_for('settings') }}" data-i18n="nav.settings">Settings</a></li>
+                        <li><a href="{{ url_for('logout') }}" data-i18n="nav.logout">Logout</a></li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="dropdown user-account">
+                    <a href="{{ url_for('login_selector') }}" class="dropdown-toggle" data-i18n="nav.userLogin">User Login</a>
+                </li>
+                {% endif %}
+                
+                <!-- Language selector -->
+                <li class="dropdown language-selector">
+                    <a href="#" class="dropdown-toggle language-selector-toggle" data-i18n="nav.language"><i class="fas fa-language"></i> Language</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#" class="lang-select" data-lang="en" onclick="switchLanguage('en'); return false;">English</a></li>
+                        <li><a href="#" class="lang-select" data-lang="si" onclick="switchLanguage('si'); return false;">සිංහල</a></li>
+                        <li><a href="#" class="lang-select" data-lang="ta" onclick="switchLanguage('ta'); return false;">தமிழ்</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+    <footer>
+        <p data-i18n="footer.copyright">&copy; 2024 WeatherGuard Harvest. All rights reserved.</p>
+    </footer>
+
+    <!-- Initialize translation system after page load -->
+    <script>
+        // Force translation initialization - this runs after translations.js loads
+        (function() {
+            function forceTranslation() {
+                var savedLang = localStorage.getItem('language') || localStorage.getItem('lang') || 'en';
+                console.log('Force translation called, saved language:', savedLang);
+                console.log('window.setLanguage available:', typeof window.setLanguage);
+                
+                // If translations.js failed to load, just set the lang attribute
+                if (window.translationsLoadError) {
+                    console.warn('⚠ translations.js failed to load, setting lang attribute only');
+                    if (document.documentElement) {
+                        document.documentElement.lang = savedLang;
+                    }
+                    return;
+                }
+                
+                // Try multiple times to ensure translation happens
+                var attempts = 0;
+                var maxAttempts = 10; // Reduced from 20
+                
+                function tryTranslate() {
+                    attempts++;
+                    if (window.setLanguage && typeof window.setLanguage === 'function') {
+                        console.log('Calling setLanguage with:', savedLang, '(attempt', attempts + ')');
+                        try {
+                            window.setLanguage(savedLang);
+                            console.log('✓ Translation applied successfully');
+                            return; // Success, stop retrying
+                        } catch (e) {
+                            console.error('Error calling setLanguage:', e);
+                            if (attempts < maxAttempts) {
+                                setTimeout(tryTranslate, 200);
+                            } else {
+                                console.error('✗ Failed after', maxAttempts, 'attempts');
+                            }
+                        }
+                    } else {
+                        if (attempts < maxAttempts) {
+                            console.log('setLanguage not available yet, retrying... (attempt', attempts + ')');
+                            setTimeout(tryTranslate, 200);
+                        } else {
+                            console.error('✗ setLanguage not available after', maxAttempts, 'attempts');
+                            console.error('This usually means translations.js has a JavaScript error. Check the browser console for errors.');
+                        }
+                    }
+                }
+                
+                // Start trying immediately
+                tryTranslate();
+            }
+            
+            // Run after a short delay to let scripts load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(forceTranslation, 100);
+                });
+            } else {
+                // DOM already loaded, run after a short delay
+                setTimeout(forceTranslation, 100);
+            }
+            
+            // Also try after longer delays as backup
+            setTimeout(forceTranslation, 500);
+            setTimeout(forceTranslation, 1000);
+        })();
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

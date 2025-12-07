@@ -1,0 +1,158 @@
+{% extends "admin/base.html" %}
+
+{% block title %}System Logs - Admin Panel{% endblock %}
+
+{% block page_title %}System Activity Logs{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-admin">
+        <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">System Logs</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Form -->
+<div class="admin-card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-filter"></i> Filter Logs</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                {{ form.action.label(class="form-label") }}
+                {{ form.action(class="form-control form-control-admin") }}
+            </div>
+            <div class="col-md-3">
+                {{ form.date_from.label(class="form-label") }}
+                {{ form.date_from(class="form-control form-control-admin", type="date") }}
+            </div>
+            <div class="col-md-3">
+                {{ form.date_to.label(class="form-label") }}
+                {{ form.date_to(class="form-control form-control-admin", type="date") }}
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                {{ form.submit(class="btn btn-admin") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="admin-card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-list-alt"></i> 
+            System Logs ({{ logs.total }} total)
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if logs.items %}
+            <div class="table-responsive">
+                <table class="table table-hover table-admin">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>User</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        <tr>
+                            <td>
+                                <small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                            </td>
+                            <td>
+                                {% if log.action == 'login' %}
+                                    <span class="badge bg-success">{{ log.action|title }}</span>
+                                {% elif log.action == 'logout' %}
+                                    <span class="badge bg-warning">{{ log.action|title }}</span>
+                                {% elif log.action == 'data_added' %}
+                                    <span class="badge bg-info">{{ log.action|title }}</span>
+                                {% elif log.action == 'data_updated' %}
+                                    <span class="badge bg-primary">{{ log.action|title }}</span>
+                                {% elif log.action == 'data_deleted' %}
+                                    <span class="badge bg-danger">{{ log.action|title }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ log.action|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ log.description[:100] }}{% if log.description|length > 100 %}...{% endif %}</small>
+                            </td>
+                            <td>
+                                {% if log.user %}
+                                    <strong>{{ log.user.username }}</strong>
+                                {% elif log.admin %}
+                                    <strong>{{ log.admin.username }} (Admin)</strong>
+                                {% else %}
+                                    <span class="text-muted">System</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ log.ip_address or 'N/A' }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if logs.pages > 1 %}
+            <nav aria-label="System logs pagination">
+                <ul class="pagination pagination-admin justify-content-center">
+                    {% if logs.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin_system_logs', page=logs.prev_num, action=request.args.get('action', 'all'), date_from=request.args.get('date_from', ''), date_to=request.args.get('date_to', '')) }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in logs.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != logs.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_system_logs', page=page_num, action=request.args.get('action', 'all'), date_from=request.args.get('date_from', ''), date_to=request.args.get('date_to', '')) }}">
+                                        {{ page_num }}
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if logs.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin_system_logs', page=logs.next_num, action=request.args.get('action', 'all'), date_from=request.args.get('date_from', ''), date_to=request.args.get('date_to', '')) }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-list-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No system logs found</h5>
+                <p class="text-muted">Try adjusting your filter criteria</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

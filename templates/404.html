@@ -1,0 +1,14 @@
+<!-- templates/404.html -->
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - WeatherGuard Harvest{% endblock %}
+
+{% block content %}
+    <main>
+        <section class="form-container">
+            <h1 data-i18n="404.title">404 - Page Not Found</h1>
+            <p data-i18n="404.message">Sorry, the page you're looking for doesn't exist.</p>
+            <a href="{{ url_for('home') }}" class="weather-btn" data-i18n="404.goHome">Back to Home</a>
+        </section>
+    </main>
+{% endblock %}

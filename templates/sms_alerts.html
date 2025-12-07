@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}SMS Weather Alerts - WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .sms-hero {
+            background: linear-gradient(135deg, #388659 0%, #52AA8A 100%);
+            color: white;
+            padding: 60px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .sms-hero h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .sms-hero p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+        .feature-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            margin-bottom: 20px;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .feature-icon {
+            font-size: 3rem;
+            color: #388659;
+            margin-bottom: 15px;
+        }
+        .subscription-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #388659;
+            box-shadow: 0 0 0 0.2rem rgba(56, 134, 89, 0.25);
+        }
+        .btn-subscribe {
+            background: linear-gradient(135deg, #388659 0%, #52AA8A 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-subscribe:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(56, 134, 89, 0.4);
+            color: white;
+        }
+        .subscription-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #388659;
+        }
+        .badge-custom {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        .info-box {
+            background: linear-gradient(135deg, #52AA8A 0%, #388659 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        .info-box h5 {
+            margin-bottom: 15px;
+        }
+        .info-box ul {
+            margin-bottom: 0;
+        }
+        .info-box li {
+            margin-bottom: 8px;
+        }
+        .help-text {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .phone-example {
+            background: #e7f3ff;
+            border-left: 3px solid #2196F3;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4 mb-5">
+        <!-- Hero Section -->
+        <div class="sms-hero">
+            <i class="fas fa-sms" style="font-size: 4rem; margin-bottom: 20px;"></i>
+            <h1><i class="fas fa-mobile-alt"></i> <span data-i18n="sms.title">SMS Weather Alerts</span></h1>
+            <p data-i18n="sms.heroSubtitle">Get daily weather forecasts and plant protection advice on your mobile phone</p>
+            <p style="font-size: 1rem; opacity: 0.9; margin-top: 10px;" data-i18n="sms.worksOnAllPhones">
+                <i class="fas fa-check-circle"></i> Works on all phones, even basic button phones
+            </p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' }}"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Features Section -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card feature-card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-bell feature-icon"></i>
+                        <h5 class="card-title" data-i18n="sms.dailyAlerts">Daily Alerts</h5>
+                        <p class="card-text" data-i18n="sms.dailyAlertsDesc">Receive weather forecasts every day at your preferred time</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card feature-card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-exclamation-triangle feature-icon"></i>
+                        <h5 class="card-title" data-i18n="sms.severeWeatherWarnings">Severe Weather Warnings</h5>
+                        <p class="card-text" data-i18n="sms.severeWeatherWarningsDesc">Get alerts before heavy rain, storms, or extreme temperatures</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card feature-card text-center h-100">
+                    <div class="card-body">
+                        <i class="fas fa-seedling feature-icon"></i>
+                        <h5 class="card-title" data-i18n="sms.plantProtectionTips">Plant Protection Tips</h5>
+                        <p class="card-text" data-i18n="sms.plantProtectionTipsDesc">Learn how to protect your crops from bad weather</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscription Form -->
+        <div class="subscription-card">
+            <h3 class="mb-4"><i class="fas fa-plus-circle text-primary"></i> <span data-i18n="sms.subscribe">Subscribe to Weather Alerts</span></h3>
+            
+            <form method="POST" id="subscriptionForm">
+                {{ form.hidden_tag() }}
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><span data-i18n="sms.phoneNumber">Phone Number</span></label>
+                        {{ form.phone_number(class="form-control", placeholder="0771234567") }}
+                        <div class="phone-example">
+                            <i class="fas fa-info-circle"></i> <strong data-i18n="sms.examples">Examples:</strong> 0771234567, 0712345678, or +94771234567
+                        </div>
+                        {% if form.phone_number.errors %}
+                            {% for error in form.phone_number.errors %}
+                                <div class="text-danger small mt-1"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><span data-i18n="sms.cityLabel">City</span></label>
+                        {{ form.city(class="form-select") }}
+                        <div class="help-text">
+                            <i class="fas fa-map-marker-alt"></i> <span data-i18n="sms.selectFarmingLocation">Select your farming location</span>
+                        </div>
+                        {% if form.city.errors %}
+                            {% for error in form.city.errors %}
+                                <div class="text-danger small mt-1"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><span data-i18n="sms.alertTypesLabel">Alert Types</span></label>
+                        {{ form.alert_types(class="form-select") }}
+                        <div class="help-text">
+                            <i class="fas fa-filter"></i> <span data-i18n="sms.chooseAlerts">Choose which alerts you want to receive</span>
+                        </div>
+                        {% if form.alert_types.errors %}
+                            {% for error in form.alert_types.errors %}
+                                <div class="text-danger small mt-1"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label"><span data-i18n="sms.alertTimeLabel">Daily Alert Time</span></label>
+                        {{ form.alert_time(class="form-control", placeholder="08:00", type="time") }}
+                        <div class="help-text">
+                            <i class="fas fa-clock"></i> <span data-i18n="sms.dailyAlertTime">Daily alert time</span>
+                        </div>
+                        {% if form.alert_time.errors %}
+                            {% for error in form.alert_time.errors %}
+                                <div class="text-danger small mt-1"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label"><span data-i18n="sms.languageLabel">Language</span></label>
+                        {{ form.language(class="form-select") }}
+                        <div class="help-text">
+                            <i class="fas fa-language"></i> <span data-i18n="sms.messageLanguage">Message language</span>
+                        </div>
+                        {% if form.language.errors %}
+                            {% for error in form.language.errors %}
+                                <div class="text-danger small mt-1"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-subscribe">
+                        <i class="fas fa-paper-plane"></i> <span data-i18n="sms.subscribeButton">Subscribe to SMS Alerts</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Existing Subscriptions -->
+        {% if subscriptions %}
+        <div class="subscription-card">
+            <h3 class="mb-4"><i class="fas fa-list text-primary"></i> <span data-i18n="sms.yourActiveSubscriptions">Your Active Subscriptions</span></h3>
+            
+            {% for sub in subscriptions %}
+            <div class="subscription-item">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <strong><i class="fas fa-phone"></i> <span data-i18n="sms.phone">Phone</span>:</strong><br>
+                        <span class="text-muted">{{ sub.phone_number }}</span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong><i class="fas fa-map-marker-alt"></i> <span data-i18n="profile.city">City</span>:</strong><br>
+                        <span class="text-muted">{{ sub.city }}</span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong><i class="fas fa-bell"></i> <span data-i18n="sms.alertType">Alert Type</span>:</strong><br>
+                        {% if sub.alert_types == "all" %}
+                            <span class="badge bg-info badge-custom" data-i18n="sms.allAlerts">All Alerts</span>
+                        {% elif sub.alert_types == "heavy_rain" %}
+                            <span class="badge bg-warning badge-custom" data-i18n="sms.heavyRain">Heavy Rain</span>
+                        {% elif sub.alert_types == "extreme_temp" %}
+                            <span class="badge bg-danger badge-custom" data-i18n="sms.extremeTemp">Extreme Temp</span>
+                        {% else %}
+                            <span class="badge bg-secondary badge-custom">{{ sub.alert_types }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <strong><i class="fas fa-clock"></i> <span data-i18n="sms.time">Time</span>:</strong><br>
+                        <span class="text-muted">{{ sub.alert_time }}</span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong data-i18n="sms.status">Status</strong>:<br>
+                        {% if sub.is_active %}
+                            <span class="badge bg-success badge-custom"><i class="fas fa-check"></i> <span data-i18n="sms.active">Active</span></span>
+                        {% else %}
+                            <span class="badge bg-secondary badge-custom" data-i18n="sms.inactive">Inactive</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-1 text-end">
+                        {% if sub.is_active %}
+                            <form method="POST" action="{{ url_for('unsubscribe_sms_alert', subscription_id=sub.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm((window.getTranslation || getTranslation)('sms.confirmUnsubscribe'))">
+                                    <i class="fas fa-ban"></i> <span data-i18n="sms.unsubscribe">Unsubscribe</span>
+                                </button>
+                            </form>
+                        {% else %}
+                            <span class="text-muted small" data-i18n="sms.unsubscribed">Unsubscribed</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if sub.last_alert_sent %}
+                <div class="mt-2 text-muted small">
+                    <i class="fas fa-history"></i> <span data-i18n="sms.lastAlertSent">Last alert sent</span>: {{ sub.last_alert_sent.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 10px;"></i>
+            <h5 data-i18n="sms.noActiveSubscriptions">No Active Subscriptions</h5>
+            <p class="mb-0" data-i18n="sms.subscribeAbove">Subscribe above to start receiving weather alerts on your phone!</p>
+        </div>
+        {% endif %}
+
+        <!-- Information Box -->
+        <div class="info-box">
+            <h5><i class="fas fa-info-circle"></i> <span data-i18n="sms.howItWorks">How It Works</span></h5>
+            <ul>
+                <li><i class="fas fa-check"></i> <strong data-i18n="sms.dailyForecasts">Daily Forecasts:</strong> <span data-i18n="sms.dailyForecastsDesc">Receive tomorrow's weather forecast every day</span></li>
+                <li><i class="fas fa-check"></i> <strong data-i18n="sms.severeWeatherAlerts">Severe Weather Alerts:</strong> <span data-i18n="sms.severeWeatherAlertsDesc">Get warnings before heavy rain, storms, or extreme temperatures</span></li>
+                <li><i class="fas fa-check"></i> <strong data-i18n="sms.plantProtection">Plant Protection:</strong> <span data-i18n="sms.plantProtectionDesc">Each alert includes advice on how to protect your crops</span></li>
+                <li><i class="fas fa-check"></i> <strong data-i18n="sms.worksEverywhere">Works Everywhere:</strong> <span data-i18n="sms.worksEverywhereDesc">SMS works on all phones, even basic button phones without internet</span></li>
+                <li><i class="fas fa-check"></i> <strong data-i18n="sms.freeService">Free Service:</strong> <span data-i18n="sms.freeServiceDesc">No charges, completely free for farmers</span></li>
+                <li><i class="fas fa-check"></i> <strong data-i18n="sms.easyUnsubscribe">Easy Unsubscribe:</strong> <span data-i18n="sms.easyUnsubscribeDesc">You can unsubscribe at any time</span></li>
+            </ul>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-format phone number input
+        document.querySelector('input[name="phone_number"]')?.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 0 && !value.startsWith('94')) {
+                if (value.startsWith('0')) {
+                    // Keep as is, will be converted to +94 format
+                } else if (value.length === 9) {
+                    // Add leading 0 if missing
+                    if (!value.startsWith('0')) {
+                        value = '0' + value;
+                    }
+                }
+            }
+        });
+        
+        // Function to translate city names in SMS page dropdown
+        function translateSMSCityNames() {
+            if (!window.translateCityName || typeof window.translateCityName !== 'function') return;
+            
+            // Translate city dropdown options
+            const citySelect = document.querySelector('select[name="city"]');
+            if (citySelect) {
+                Array.from(citySelect.options).forEach(option => {
+                    if (option.value && option.value !== '') {
+                        const translated = window.translateCityName(option.value);
+                        if (translated && translated !== option.value) {
+                            option.textContent = translated;
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Function to translate alert types dropdown options
+        function translateAlertTypes() {
+            const getTrans = window.getTranslation || (typeof getTranslation === 'function' ? getTranslation : null);
+            if (!getTrans || typeof getTrans !== 'function') return;
+            
+            const alertTypesSelect = document.querySelector('select[name="alert_types"]');
+            if (alertTypesSelect) {
+                // Map of option values to translation keys
+                const alertTypeMap = {
+                    'all': 'sms.allWeatherAlerts',
+                    'heavy_rain': 'sms.heavyRainOnly',
+                    'extreme_temp': 'sms.extremeTempOnly',
+                    'severe': 'sms.severeWeatherOnly'
+                };
+                
+                Array.from(alertTypesSelect.options).forEach(option => {
+                    if (option.value && alertTypeMap[option.value]) {
+                        const translation = getTrans(alertTypeMap[option.value]);
+                        if (translation && translation !== alertTypeMap[option.value]) {
+                            option.textContent = translation;
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Function to initialize translations on page load
+        function initializeTranslations() {
+            // Make sure getTranslation is available globally
+            if (typeof getTranslation === 'function' && !window.getTranslation) {
+                window.getTranslation = getTranslation;
+            }
+            
+            // Translate all elements with data-i18n attributes
+            if (typeof translatePage === 'function') {
+                translatePage();
+            }
+            
+            // Translate city names
+            translateSMSCityNames();
+            
+            // Translate alert types dropdown
+            translateAlertTypes();
+        }
+        
+        // Translate on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(initializeTranslations, 300);
+            });
+        } else {
+            setTimeout(initializeTranslations, 300);
+        }
+        
+        // Re-translate when language changes
+        window.addEventListener('languageChanged', function() {
+            initializeTranslations();
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Plant Tracking{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='plant_tracking/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #a8e063 0%, #2d5a3d 100%);
+            min-height: 100vh;
+            background-attachment: fixed;
+        }
+        .plant-tracker {
+            margin-top: -125px; /* Reduced by 175px total from original 50px (now -125px to bring closer to navigation bar) */
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <main>
+        <div id="app-root">
+            <section class="plant-tracker">
+                <div class="glass-bubble" aria-label="3D Plant Bubble">
+                    <div class="bubble-inner">
+                        <img id="stage-1" class="plant-stage" alt="Seed" src="{{ url_for('static', filename='plant_tracking/assets/seed.png') }}" />
+                        <img id="stage-2" class="plant-stage" alt="Seedling" src="{{ url_for('static', filename='plant_tracking/assets/seedling.png') }}" />
+                        <img id="stage-3" class="plant-stage" alt="Small plant" src="{{ url_for('static', filename='plant_tracking/assets/small-plant.png') }}" />
+                        <img id="stage-4" class="plant-stage" alt="Small plant grown" src="{{ url_for('static', filename='plant_tracking/assets/small-plant-grown.png') }}" />
+                        <img id="stage-5" class="plant-stage" alt="Grown plant" src="{{ url_for('static', filename='plant_tracking/assets/grown.png') }}" />
+                        <img id="stage-6" class="plant-stage" alt="Fully grown with flowers" src="{{ url_for('static', filename='plant_tracking/assets/fully-grown-flower.png') }}" />
+                        <div class="soil-shadow"></div>
+                    </div>
+                    <div class="bubble-gloss"></div>
+                    <div class="bubble-caustics"></div>
+                </div>
+
+                <div class="plant-name-placeholder" aria-live="polite"><span id="plant-name" style="font-size: 1.1em; font-weight: 600;">Loading…</span> <span id="plant-location" style="font-size: 0.9em; color: rgba(255,255,255,0.8); margin-left: 10px; display: inline-flex; align-items: center; gap: 4px;"></span></div>
+
+                <div class="tracker-ui">
+                    <section class="detail-block">
+                        <p class="detail-label">Heading</p>
+                        <header class="tracker-header">
+                            <h1 data-i18n="plant.heading">Plant Tracking</h1>
+                            <p class="subtitle" data-i18n="plant.subtitle">Growth insights, history, and care recommendations</p>
+                        </header>
+
+                        <div class="category-selector">
+                            <p class="detail-label" data-i18n="plant.category">Plant Category</p>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="plant-category" value="grains-legumes" checked />
+                                    <span data-i18n="plant.grainsLegumes">Grains & Legumes</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="plant-category" value="fruity-vegetables" />
+                                    <span data-i18n="plant.fruityVegetables">Fruity Vegetables</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="plant-category" value="leafy-stem" />
+                                    <span data-i18n="plant.leafyStem">Leafy & Stem Vegetables</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="plant-category" value="root-tuberous" />
+                                    <span data-i18n="plant.rootTuberous">Root & Tuberous Vegetables</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <form id="controls" class="controls" autocomplete="off">
+                            <div class="control-group range">
+                                <label for="stage-range" data-i18n="plant.stage">Stage</label>
+                                <input id="stage-range" type="range" min="1" max="6" step="1" value="1" />
+                                <div class="range-labels">
+                                    <span>Seed</span>
+                                    <span>Seedling</span>
+                                    <span>Small</span>
+                                    <span>Growing</span>
+                                    <span>Grown</span>
+                                    <span>Flower</span>
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label for="planted-date" data-i18n="plant.plantedDate">Planted date</label>
+                                <input id="planted-date" name="planted-date" type="date" />
+                            </div>
+
+                            <div class="control-group">
+                                <label for="location" data-i18n="plant.location">Location</label>
+                                <input id="location" name="location" type="text" placeholder="City or Lat,Lng" />
+                            </div>
+
+                            <div class="control-actions">
+                                <button id="auto-stage" type="button" data-i18n="plant.autoStage">Auto stage</button>
+                                <button id="refresh-weather" type="button" data-i18n="plant.refreshWeather">Refresh weather</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section class="detail-block">
+                        <p class="detail-label" data-i18n="plant.growthWeather">Growth & Weather</p>
+                        <div class="info-grid two-card">
+                            <div class="info-card">
+                                <h3 data-i18n="plant.atAGlance">At a glance</h3>
+                                <ul class="stats" id="glance">
+                                    <li><strong data-i18n="plant.age">Age</strong>: <span id="age-days">—</span></li>
+                                    <li><strong data-i18n="plant.stage">Stage</strong>: <span id="stage-name">Seed</span></li>
+                                    <li><strong data-i18n="plant.nextMilestone">Next milestone</strong>: <span id="next-milestone">—</span></li>
+                                </ul>
+                            </div>
+
+                            <div class="info-card">
+                                <h3 data-i18n="weather.title">Weather</h3>
+                                <div id="weather" class="weather">
+                                    <div class="weather-row"><span>Temp</span><strong id="w-temp">—</strong></div>
+                                    <div class="weather-row"><span data-i18n="weather.humidity">Humidity</span><strong id="w-humidity">—</strong></div>
+                                    <div class="weather-row"><span data-i18n="weather.clouds">Clouds</span><strong id="w-clouds">—</strong></div>
+                                    <div class="weather-row"><span data-i18n="weather.condition">Condition</span><strong id="w-desc">—</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-card wide chart-container">
+                            <h3 data-i18n="plant.growthWeatherAnalyzer">Growth & Weather Analyzer</h3>
+                            <canvas id="growth-weather-chart"></canvas>
+                        </div>
+                    </section>
+
+                    <section class="detail-block">
+                        <p class="detail-label" data-i18n="plant.treatmentsTodos">Treatments & To-Dos</p>
+                        <div class="info-card wide">
+                            <h3 data-i18n="plant.treatmentsNeededNow">Treatments needed now</h3>
+                            <ul id="treatments" class="treatments"></ul>
+                            <div class="todo-panel" aria-label="Personal care tasks">
+                                <h4 class="todo-title" data-i18n="plant.yourTodos">Your To‑Dos</h4>
+                                <form id="todo-form" class="todo-form" autocomplete="off">
+                                    <input id="todo-input" type="text" data-i18n="plant.addTaskPlaceholder" placeholder="Add a task you plan to do…" aria-label="Add a task" />
+                                    <button type="submit" data-i18n="common.add">Add</button>
+                                </form>
+                                <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="detail-block">
+                        <p class="detail-label" data-i18n="plant.history">History</p>
+                        <div class="info-card wide">
+                            <h3 data-i18n="plant.history">History</h3>
+                            <div id="history" class="history"></div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Floating quick plant tracker widget (hidden on plant tracking page) -->
+    <div class="plant-widget" aria-live="polite" style="display: none;">
+        <div class="plant-widget-inner">
+            <button class="fold-btn-left" aria-label="Fold to side">></button>
+            
+            <div class="glass-bubble" aria-hidden="true">
+                <div class="bubble-inner">
+                    <img id="mini-stage-1" class="plant-stage" alt="Seed" src="{{ url_for('static', filename='plant_tracking/assets/seed.png') }}" />
+                    <img id="mini-stage-2" class="plant-stage" alt="Seedling" src="{{ url_for('static', filename='plant_tracking/assets/seedling.png') }}" />
+                    <img id="mini-stage-3" class="plant-stage" alt="Small plant" src="{{ url_for('static', filename='plant_tracking/assets/small-plant.png') }}" />
+                    <img id="mini-stage-4" class="plant-stage" alt="Small plant grown" src="{{ url_for('static', filename='plant_tracking/assets/small-plant-grown.png') }}" />
+                    <img id="mini-stage-5" class="plant-stage" alt="Grown plant" src="{{ url_for('static', filename='plant_tracking/assets/grown.png') }}" />
+                    <img id="mini-stage-6" class="plant-stage" alt="Fully grown with flowers" src="{{ url_for('static', filename='plant_tracking/assets/fully-grown-flower.png') }}" />
+                    <div class="soil-shadow"></div>
+                </div>
+                <div class="bubble-gloss"></div>
+                <div class="bubble-caustics"></div>
+            </div>
+
+            <div class="plant-mini-details">
+                <div class="mini-row">
+                    <strong id="mini-plant-name">—</strong>
+                </div>
+                <div class="mini-row">
+                    <span>Age</span><strong id="mini-age-days">—</strong>
+                    <span style="margin-left:10px;">Stage</span><strong id="mini-stage-name">—</strong>
+                </div>
+                <div class="mini-row">
+                    <span>Next</span><strong id="mini-next-milestone">—</strong>
+                </div>
+                <div class="mini-row">
+                    <span>Temp</span><strong id="mini-temp">—</strong>
+                    <span style="margin-left:10px;">Hum</span><strong id="mini-humidity">—</strong>
+                </div>
+                
+                <!-- Essential sections -->
+                <div class="mini-section">
+                    <h4>Essential Tasks</h4>
+                    <ul id="mini-treatments" class="mini-treatments"></ul>
+                </div>
+                
+                <div class="mini-section">
+                    <h4 data-i18n="plant.yourTodos">Your Todos</h4>
+                    <form id="mini-todo-form" class="mini-todo-form">
+                        <input id="mini-todo-input" type="text" data-i18n="plant.addTask" placeholder="Add task..." />
+                        <button type="submit">+</button>
+                    </form>
+                    <ul id="mini-todo-list" class="mini-todo-list"></ul>
+                </div>
+            </div>
+
+            <a class="mini-btn" href="{{ url_for('plant_tracking') }}" data-i18n="plant.openTracker">Open Tracker</a>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='plant_tracking/app.js') }}"></script>
+    <script>
+        // Pass selected plant data from server to JavaScript
+        const selectedPlantData = {
+            plant: {{ selected_plant | tojson if selected_plant else 'null' }},
+            category: {{ selected_category | tojson if selected_category else 'null' }},
+            location: {{ selected_plant_location | tojson if selected_plant_location else 'null' }},
+            city: {{ selected_plant_city | tojson if selected_plant_city else 'null' }},
+            area_name: {{ selected_plant_area | tojson if selected_plant_area else 'null' }}
+        };
+        
+        // Set defaults based on selected plant after DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            if (selectedPlantData.plant && selectedPlantData.category) {
+                // Set category radio button
+                const categoryRadio = document.querySelector(`input[name="plant-category"][value="${selectedPlantData.category}"]`);
+                if (categoryRadio) {
+                    categoryRadio.checked = true;
+                    categoryRadio.dispatchEvent(new Event('change'));
+                }
+                
+                // Set plant name
+                const plantNameEl = document.getElementById('plant-name');
+                if (plantNameEl) {
+                    plantNameEl.textContent = selectedPlantData.plant;
+                }
+                
+                // Set location display
+                let locationText = selectedPlantData.location || 
+                    (selectedPlantData.area_name && selectedPlantData.city ? 
+                        `${selectedPlantData.area_name}, ${selectedPlantData.city}` : 
+                        (selectedPlantData.city || ''));
+                
+                // Translate city name in location text
+                if (locationText && window.translateCityName && typeof window.translateCityName === 'function') {
+                    // If location contains comma, translate the city part (after comma)
+                    if (locationText.includes(',')) {
+                        const parts = locationText.split(',');
+                        const cityPart = parts[parts.length - 1].trim();
+                        const translatedCity = window.translateCityName(cityPart);
+                        if (translatedCity && translatedCity !== cityPart) {
+                            parts[parts.length - 1] = translatedCity;
+                            locationText = parts.join(', ');
+                        }
+                    } else {
+                        // Try to translate the whole text as a city name
+                        const translated = window.translateCityName(locationText);
+                        if (translated && translated !== locationText) {
+                            locationText = translated;
+                        }
+                    }
+                }
+                
+                const plantLocationEl = document.getElementById('plant-location');
+                if (plantLocationEl && locationText) {
+                    plantLocationEl.innerHTML = `<img src="/static/images/Location_pin .ico" style="width: 20px; height: 20px; filter: drop-shadow(0 0 4px rgba(168, 224, 99, 0.8)) drop-shadow(0 0 8px rgba(168, 224, 99, 0.5));" alt="Location"> ${locationText}`;
+                }
+                
+                // Set location input field
+                const locationInput = document.getElementById('location');
+                if (locationInput && selectedPlantData.city) {
+                    let locationValue = selectedPlantData.area_name && selectedPlantData.city ? 
+                        `${selectedPlantData.area_name}, ${selectedPlantData.city}` : 
+                        selectedPlantData.city;
+                    
+                    // Translate city name in location value
+                    if (window.translateCityName && typeof window.translateCityName === 'function') {
+                        if (locationValue.includes(',')) {
+                            const parts = locationValue.split(',');
+                            const cityPart = parts[parts.length - 1].trim();
+                            const translatedCity = window.translateCityName(cityPart);
+                            if (translatedCity && translatedCity !== cityPart) {
+                                parts[parts.length - 1] = translatedCity;
+                                locationValue = parts.join(', ');
+                            }
+                        } else {
+                            const translated = window.translateCityName(locationValue);
+                            if (translated && translated !== locationValue) {
+                                locationValue = translated;
+                            }
+                        }
+                    }
+                    
+                    locationInput.value = locationValue;
+                }
+            }
+        });
+    </script>
+{% endblock %}

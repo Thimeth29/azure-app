@@ -1,0 +1,106 @@
+<!-- templates/support.html -->
+{% extends "base.html" %}
+
+{% block title %}Support - WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='plant_tracking/styles.css') }}">
+{% endblock %}
+
+{% block content %}
+    <main>
+        <section class="form-container">
+            <h1 data-i18n="support.title">Support</h1>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            <p data-i18n="support.contactUs">Contact us for assistance with your farming needs.</p>
+            <form method="POST" action="{{ url_for('support') }}" aria-label="Support contact form">
+                <div class="form-group">
+                    <label for="name" data-i18n="support.name">Name</label>
+                    <input type="text" id="name" name="name" required maxlength="100" aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="email" data-i18n="support.email">Email</label>
+                    <input type="email" id="email" name="email" required aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label for="message" data-i18n="support.message">Message</label>
+                    <textarea id="message" name="message" required maxlength="500" rows="5" aria-required="true"></textarea>
+                </div>
+                <button type="submit" class="weather-btn" data-i18n="support.sendMessage">Send Message</button>
+            </form>
+            <p><span data-i18n="support.email">Email</span>: <a href="mailto:support@weatherguardharvest.com">support@weatherguardharvest.com</a></p>
+            <p><span data-i18n="support.phone">Phone</span>: +94 25 123 4567</p>
+        </section>
+    </main>
+
+    {% if user.is_authenticated %}
+    <!-- Floating Plant Tracking mini widget -->
+    <div class="plant-widget" aria-live="polite">
+        <div class="plant-widget-inner">
+            <!-- Plant bubble on top -->
+            <div class="glass-bubble" aria-hidden="true">
+                <div class="bubble-inner">
+                    <img id="mini-stage-1" class="plant-stage" alt="Seed" src="{{ url_for('static', filename='plant_tracking/assets/seed.png') }}" />
+                    <img id="mini-stage-2" class="plant-stage" alt="Seedling" src="{{ url_for('static', filename='plant_tracking/assets/seedling.png') }}" />
+                    <img id="mini-stage-3" class="plant-stage" alt="Small plant" src="{{ url_for('static', filename='plant_tracking/assets/small-plant.png') }}" />
+                    <img id="mini-stage-4" class="plant-stage" alt="Small plant grown" src="{{ url_for('static', filename='plant_tracking/assets/small-plant-grown.png') }}" />
+                    <img id="mini-stage-5" class="plant-stage" alt="Grown plant" src="{{ url_for('static', filename='plant_tracking/assets/grown.png') }}" />
+                    <img id="mini-stage-6" class="plant-stage" alt="Fully grown with flowers" src="{{ url_for('static', filename='plant_tracking/assets/fully-grown-flower.png') }}" />
+                    <div class="soil-shadow"></div>
+                </div>
+                <div class="bubble-gloss"></div>
+                <div class="bubble-caustics"></div>
+            </div>
+
+            <!-- No fold button needed - hover to unfold -->
+            
+            <!-- Open Tracker button - visible when folded (under bubble) -->
+            <a class="mini-btn widget-tracker-btn-folded" href="{{ url_for('plant_tracking') }}">Open Tracker</a>
+
+            <!-- Panel content (hidden when folded) -->
+            <div class="panel-content">
+                <div class="plant-mini-details">
+                    <div class="mini-row">
+                        <strong id="mini-plant-name">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span>Age</span><strong id="mini-age-days">—</strong>
+                        <span style="margin-left:10px;">Stage</span><strong id="mini-stage-name">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span>Next</span><strong id="mini-next-milestone">—</strong>
+                    </div>
+                    <div class="mini-row">
+                        <span>Temp</span><strong id="mini-temp">—</strong>
+                        <span style="margin-left:10px;">Hum</span><strong id="mini-humidity">—</strong>
+                    </div>
+                    
+                    <!-- Essential sections -->
+                    <div class="mini-section">
+                        <h4 data-i18n="plant.essentialTasks">Essential Tasks</h4>
+                        <ul id="mini-treatments" class="mini-treatments"></ul>
+                    </div>
+                    
+                    <div class="mini-section">
+                        <h4 data-i18n="plant.yourTodos">Your Todos</h4>
+                        <form id="mini-todo-form" class="mini-todo-form">
+                            <input id="mini-todo-input" type="text" data-i18n="plant.addTask" placeholder="Add task..." />
+                            <button type="submit">+</button>
+                        </form>
+                        <!-- Open Tracker button -->
+                        <a class="mini-btn widget-tracker-btn" href="{{ url_for('plant_tracking') }}" data-i18n="plant.openTracker">Open Tracker</a>
+                        <ul id="mini-todo-list" class="mini-todo-list"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='plant_tracking/app.js') }}"></script>
+    {% endif %}
+{% endblock %}

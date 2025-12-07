@@ -1,0 +1,259 @@
+<!-- templates/about_us.html -->
+{% extends "base.html" %}
+
+{% block title %}About Us - WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+<style>
+    .about-us-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 40px 20px;
+    }
+
+    .about-hero {
+        text-align: center;
+        padding: 60px 20px;
+        background: linear-gradient(135deg, rgba(56, 134, 89, 0.1), rgba(82, 170, 138, 0.1));
+        border-radius: 20px;
+        margin-bottom: 60px;
+    }
+
+    .about-hero h1 {
+        font-size: 2.5em;
+        color: #388659;
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+
+    .about-hero p {
+        font-size: 1.2em;
+        color: #555;
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.8;
+    }
+
+    .about-content {
+        background: white;
+        border-radius: 15px;
+        padding: 50px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 40px;
+    }
+
+    .about-intro {
+        font-size: 1.1em;
+        line-height: 1.9;
+        color: #444;
+        margin-bottom: 40px;
+        text-align: justify;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-top: 50px;
+    }
+
+    .feature-card {
+        background: linear-gradient(135deg, #f8fdf9 0%, #ffffff 100%);
+        border: 2px solid #e8f5e9;
+        border-radius: 15px;
+        padding: 35px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: linear-gradient(180deg, #388659, #52AA8A);
+        transition: width 0.3s ease;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(56, 134, 89, 0.15);
+        border-color: #52AA8A;
+    }
+
+    .feature-card:hover::before {
+        width: 100%;
+        opacity: 0.05;
+    }
+
+    .feature-icon {
+        font-size: 3em;
+        color: #388659;
+        margin-bottom: 20px;
+        display: block;
+    }
+
+    .feature-card h3 {
+        color: #388659;
+        font-size: 1.5em;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+
+    .feature-card p {
+        color: #666;
+        line-height: 1.7;
+        font-size: 1.05em;
+    }
+
+    .mission-section {
+        background: linear-gradient(135deg, #388659 0%, #52AA8A 100%);
+        color: white;
+        padding: 50px;
+        border-radius: 15px;
+        margin-top: 50px;
+        text-align: center;
+    }
+
+    .mission-section h2 {
+        font-size: 2em;
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+
+    .mission-section p {
+        font-size: 1.2em;
+        line-height: 1.9;
+        max-width: 900px;
+        margin: 0 auto;
+        opacity: 0.95;
+    }
+
+    .stats-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 30px;
+        margin: 50px 0;
+    }
+
+    .stat-card {
+        text-align: center;
+        padding: 30px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: scale(1.05);
+    }
+
+    .stat-number {
+        font-size: 3em;
+        font-weight: 700;
+        color: #388659;
+        margin-bottom: 10px;
+    }
+
+    .stat-label {
+        font-size: 1.1em;
+        color: #666;
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        .about-hero h1 {
+            font-size: 2em;
+        }
+
+        .about-hero p {
+            font-size: 1em;
+        }
+
+        .about-content {
+            padding: 30px 20px;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .mission-section {
+            padding: 30px 20px;
+        }
+
+        .stats-section {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main>
+    <div class="about-us-container">
+        <!-- Hero Section -->
+        <section class="about-hero">
+            <h1 data-i18n="about.title">About WeatherGuard Harvest</h1>
+            <p data-i18n="about.subtitle">Your dedicated partner in modern agriculture</p>
+        </section>
+
+        <!-- Main Content -->
+        <section class="about-content">
+            <div class="about-intro" data-i18n="about.intro">
+                Welcome to WeatherGuard Harvest, your dedicated partner in modern agriculture. We understand that maximizing yield and profit depends on precise timing and informed decisions.
+            </div>
+
+            <p class="about-intro" data-i18n="about.intro2">
+                That's why we provide farmers with the essential tools they need to stay ahead:
+            </p>
+
+            <!-- Features Grid -->
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="fas fa-bell feature-icon" aria-hidden="true"></i>
+                    <h3 data-i18n="about.feature1Title">Timely Alerts</h3>
+                    <p data-i18n="about.feature1Desc">Receive critical weather alerts directly via SMS and on-site notifications to protect your crops.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="fas fa-chart-line feature-icon" aria-hidden="true"></i>
+                    <h3 data-i18n="about.feature2Title">Smarter Planning</h3>
+                    <p data-i18n="about.feature2Desc">Utilize our advanced Profit Calculation Forecast to project financial outcomes and optimize your planting strategies.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="fas fa-seedling feature-icon" aria-hidden="true"></i>
+                    <h3 data-i18n="about.feature3Title">Growth Insights</h3>
+                    <p data-i18n="about.feature3Desc">Keep track of your crops with our Plant Tracking feature and get data-driven improvement suggestions to boost your harvest.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mission Statement -->
+        <section class="mission-section">
+            <h2 data-i18n="about.missionTitle">Our Mission</h2>
+            <p data-i18n="about.missionText">
+                WeatherGuard Harvest is committed to turning unpredictable weather into predictable success, ensuring a healthier crop and a wealthier you.
+            </p>
+        </section>
+
+        <!-- Call to Action -->
+        <section style="text-align: center; margin-top: 50px; padding: 40px;">
+            <a href="{{ url_for('signup') if not current_user.is_authenticated else url_for('weather') }}" class="weather-btn" style="display: inline-block; padding: 15px 40px; font-size: 1.1em;">
+                {% if current_user.is_authenticated %}
+                    <span data-i18n="about.getStarted">Get Started</span>
+                {% else %}
+                    <span data-i18n="about.joinUs">Join Us Today</span>
+                {% endif %}
+            </a>
+        </section>
+    </div>
+</main>
+{% endblock %}
+

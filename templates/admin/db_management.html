@@ -1,0 +1,149 @@
+{% extends "admin/base.html" %}
+
+{% block title %}DB Management - WeatherGuard Harvest{% endblock %}
+
+{% block page_title %}Database Management{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb breadcrumb-admin">
+        <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">DB Management</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 400px;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto 40px auto;
+    }
+    .danger-zone {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 10px;
+        padding: 30px;
+    }
+    .danger-zone h4 {
+        color: #721c24;
+        font-weight: 600;
+    }
+    .danger-zone p {
+        color: #721c24;
+    }
+    .btn-danger {
+        font-weight: 600;
+    }
+</style>
+
+<div class="row">
+    <!-- Database Usage Chart -->
+    <div class="col-12">
+        <div class="admin-card">
+            <div class="card-header">
+                <h5 class="mb-0">Database Storage Usage</h5>
+            </div>
+            <div class="card-body">
+                {% if db_stats and not db_stats.error %}
+                    <div class="chart-container">
+                        <canvas id="dbUsageChart"></canvas>
+                    </div>
+                    <div class="text-center">
+                        <p><strong>Total Size:</strong> {{ "%.2f"|format(db_stats.total_mb) }} MB</p>
+                        <p><strong>Used Space:</strong> {{ "%.2f"|format(db_stats.used_mb) }} MB ({{ "%.1f"|format(db_stats.used_percent) }}%)</p>
+                        <p><strong>Available Space:</strong> The chart visualizes used vs. total space. Actual "available" space depends on your RDS instance's storage limit.</p>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        Could not retrieve database storage statistics.
+                        {% if db_stats.error %}
+                            <br><strong>Error:</strong> {{ db_stats.error }}
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Danger Zone for Clearing Database -->
+    <div class="col-12">
+        <div class="danger-zone">
+            <h4>Danger Zone</h4>
+            <p>This action will permanently delete all data from all tables in the database. This cannot be undone.</p>
+            <form method="POST" action="{{ url_for('admin_clear_database') }}" onsubmit="return confirm('ARE YOU ABSOLUTELY SURE? This will delete all data permanently.');">
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Clear Entire Database
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if db_stats and not db_stats.error %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('dbUsageChart').getContext('2d');
+
+    const usedSpace = {{ db_stats.used_mb }};
+    const totalSpace = {{ db_stats.total_mb }};
+    const freeSpace = totalSpace - usedSpace > 0 ? totalSpace - usedSpace : 0; // Ensure no negative value
+
+    const data = {
+        labels: [
+            `Used Space (${usedSpace.toFixed(2)} MB)`,
+            `Free Space (${freeSpace.toFixed(2)} MB)`
+        ],
+        datasets: [{
+            data: [usedSpace, freeSpace],
+            backgroundColor: [
+                '#1a75ff', // Blue for used
+                '#e9ecef'  // Gray for free
+            ],
+            borderColor: '#ffffff',
+            borderWidth: 2
+        }]
+    };
+
+    const dbUsageChart = new Chart(ctx, {
+        type: 'pie',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            const value = context.parsed;
+                            const percentage = (value / totalSpace * 100).toFixed(1);
+                            label += `${value.toFixed(2)} MB (${percentage}%)`;
+                            return label;
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Database Storage Usage'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

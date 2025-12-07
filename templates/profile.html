@@ -1,0 +1,708 @@
+<!-- templates/profile.html -->
+{% extends "base.html" %}
+
+{% block title %}Profile - WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .profile-section {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .profile-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .info-item {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        .info-item label {
+            color: #a8e063;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .cultivation-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .cultivation-card h3 {
+            color: #a8e063;
+            margin-top: 0;
+        }
+        .plant-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            background: #52AA8A;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+        .add-plant-form {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+        }
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.9em;
+            margin: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% if greeting %}
+    <h1 class="welcome-greeting">{{ greeting }}, {{ user.username }}!</h1>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <main>
+        <section class="profile-section">
+            <h2 style="color: #a8e063; margin-bottom: 20px;" data-i18n="profile.yourProfile">Your Profile</h2>
+            
+            <!-- Personal Information -->
+            <div class="profile-info">
+                <div class="info-item">
+                    <label data-i18n="profile.username">Username</label>
+                    <div>{{ user.username }}</div>
+                </div>
+                <div class="info-item">
+                    <label data-i18n="profile.email">Email</label>
+                    <div>{{ user.email }}</div>
+                </div>
+                {% if user_profile %}
+                <div class="info-item">
+                    <label data-i18n="profile.firstName">First Name</label>
+                    <div>{{ user_profile.first_name }}</div>
+                </div>
+                <div class="info-item">
+                    <label data-i18n="profile.lastName">Last Name</label>
+                    <div>{{ user_profile.last_name }}</div>
+                </div>
+                <div class="info-item">
+                    <label data-i18n="profile.mobileNumber">Mobile Number</label>
+                    <div>{{ user_profile.mobile_number }}</div>
+                </div>
+                {% if user_profile.date_of_birth %}
+                <div class="info-item">
+                    <label data-i18n="profile.dateOfBirth">Date of Birth</label>
+                    <div>{{ user_profile.date_of_birth }}</div>
+                </div>
+                {% endif %}
+                {% if user_profile.address_city %}
+                <div class="info-item">
+                    <label data-i18n="profile.city">City</label>
+                    <div id="profile-city-display">{{ user_profile.address_city }}</div>
+                </div>
+                {% endif %}
+                {% if user_profile.address_line1 %}
+                <div class="info-item">
+                    <label data-i18n="profile.addressLine1">Address Line 1</label>
+                    <div>{{ user_profile.address_line1 }}</div>
+                </div>
+                {% endif %}
+                {% if user_profile.address_line2 %}
+                <div class="info-item">
+                    <label data-i18n="profile.addressLine2">Address Line 2</label>
+                    <div>{{ user_profile.address_line2 }}</div>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <a href="{{ url_for('settings') }}" class="weather-btn" data-i18n="profile.changePassword">Change Password</a>
+
+            <!-- Cultivations Section -->
+            <h2 style="color: #a8e063; margin-top: 40px; margin-bottom: 20px;" data-i18n="profile.cultivationAreas">Your Cultivation Areas</h2>
+            
+            {% if cultivation_data %}
+                {% for item in cultivation_data %}
+                <div class="cultivation-card">
+                    <h3 class="cultivation-area-name" data-original-area-name="{{ item.cultivation.area_name }}">{{ item.cultivation.area_name }}</h3>
+                    <p><strong data-i18n="profile.location">Location:</strong> <span class="cultivation-city" data-city="{{ item.cultivation.city }}">{{ item.cultivation.city }}</span>{% if item.cultivation.sub_area %} - {{ item.cultivation.sub_area }}{% endif %}</p>
+                    {% if item.cultivation.surface_area %}
+                    <p><strong data-i18n="profile.surfaceArea">Surface Area:</strong> {{ item.cultivation.surface_area }} sq. m</p>
+                    {% endif %}
+                    <p><strong data-i18n="profile.initialCosts">Initial Costs:</strong></p>
+                    <ul style="margin-left: 20px; color: #e0f2e9;">
+                        <li><span data-i18n="profile.seedlings">Seedlings</span>: LKR {{ "{:,.2f}".format(item.cultivation.initial_seedling_cost) }}</li>
+                        <li><span data-i18n="profile.fertilizer">Fertilizer</span>: LKR {{ "{:,.2f}".format(item.cultivation.initial_fertilizer_cost) }}</li>
+                        <li><span data-i18n="profile.resources">Resources</span>: LKR {{ "{:,.2f}".format(item.cultivation.initial_resource_cost) }}</li>
+                        {% if item.cultivation.additional_costs %}
+                            {% for cost in item.cultivation.additional_costs %}
+                            <li>{{ cost.cost_name }}: LKR {{ "{:,.2f}".format(cost.amount) }}</li>
+                            {% endfor %}
+                        {% endif %}
+                    </ul>
+                    
+                    <h4 style="color: #a8e063; margin-top: 15px;" data-i18n="profile.plantsInArea">Plants in this area:</h4>
+                    {% if item.plants %}
+                        {% for plant in item.plants %}
+                        <span class="plant-tag" data-original-plant-name="{{ plant.plant_name }}">{{ plant.plant_name }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: #e0f2e9; font-style: italic;" data-i18n="profile.noPlantsYet">No plants added yet.</p>
+                    {% endif %}
+                    
+                    <!-- Add Plant Form -->
+                    <div class="add-plant-form">
+                        <h5 style="color: #a8e063; margin-bottom: 10px;" data-i18n="profile.addNewPlant">Add New Plant</h5>
+                        <form method="POST" action="{{ url_for('add_plant') }}" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end;">
+                            <input type="hidden" name="cultivation_id" value="{{ item.cultivation.id }}">
+                            <div style="flex: 1; min-width: 200px;">
+                                <label style="display: block; margin-bottom: 5px;" data-i18n="profile.category">Category</label>
+                                <select name="plant_category" class="plant-category-select" required style="width: 100%; padding: 8px; border: none; border-radius: 5px; background: #e0f2e9; color: #333;" onchange="updatePlantNameDropdown(this, '{{ item.cultivation.id }}')">
+                                    <option value="grains-legumes" data-i18n="plant.grainsLegumes">Grains & Legumes</option>
+                                    <option value="fruity-vegetables" data-i18n="plant.fruityVegetables">Fruity Vegetables</option>
+                                    <option value="leafy-stem" data-i18n="plant.leafyStem">Leafy & Stem Vegetables</option>
+                                    <option value="root-tuberous" data-i18n="plant.rootTuberous">Root & Tuberous Vegetables</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <label style="display: block; margin-bottom: 5px;" data-i18n="profile.plantName">Plant Name</label>
+                                <select name="plant_name" class="plant-name-select" data-cultivation-id="{{ item.cultivation.id }}" required style="width: 100%; padding: 8px; border: none; border-radius: 5px; background: #e0f2e9; color: #333;">
+                                    <option value="" data-i18n="profile.selectPlant">Select Plant</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="weather-btn btn-small" data-i18n="profile.addPlant">Add Plant</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #e0f2e9;" data-i18n="profile.noCultivationAreas">No cultivation areas added yet. Add your first cultivation area below.</p>
+            {% endif %}
+
+            <!-- Add New Cultivation Area -->
+            <div class="cultivation-card" style="background: rgba(168, 224, 99, 0.2);">
+                <h3 style="color: #a8e063;" data-i18n="profile.addNewCultivationArea">Add New Cultivation Area</h3>
+                <form method="POST" action="{{ url_for('add_cultivation') }}">
+                    <div class="form-group">
+                        <label data-i18n="profile.areaName">Area Name *</label>
+                        <input type="text" name="area_name" required style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: #e0f2e9; color: #333;">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="profile.city">City *</label>
+                        <select name="city" id="profile-city-select" required style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: #e0f2e9; color: #333;">
+                            <option value="" data-i18n="profile.selectCity">Select City</option>
+                            {% for city in cities %}
+                            <option value="{{ city }}">{{ city }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="profile.subArea">Sub-Area</label>
+                        <input type="text" name="sub_area" style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: #e0f2e9; color: #333;">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="profile.surfaceAreaInput">Surface Area (square meters or acres)</label>
+                        <input type="number" name="surface_area" step="0.01" min="0" style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: #e0f2e9; color: #333;">
+                    </div>
+                    <button type="submit" class="weather-btn" data-i18n="profile.addCultivationArea">Add Cultivation Area</button>
+                </form>
+            </div>
+        </section>
+    </main>
+    
+    <script>
+        // Function to translate city names in profile page
+        function translateProfileCityNames() {
+            if (!window.translateCityName || typeof window.translateCityName !== 'function') {
+                console.log('translateCityName function not available');
+                return;
+            }
+            
+            if (!window.getTranslation || typeof window.getTranslation !== 'function') {
+                console.log('getTranslation function not available');
+                return;
+            }
+            
+            // Get current language
+            const currentLang = window.currentLanguage || localStorage.getItem('language') || 'en';
+            
+            // Translate profile city display
+            const profileCityDisplay = document.getElementById('profile-city-display');
+            if (profileCityDisplay) {
+                const originalCity = profileCityDisplay.textContent.trim();
+                if (originalCity) {
+                    const translated = window.translateCityName(originalCity);
+                    if (translated && translated !== originalCity && !translated.startsWith('city.')) {
+                        profileCityDisplay.textContent = translated;
+                    }
+                }
+            }
+            
+            // Translate area names if they are city names (the green h3 text)
+            document.querySelectorAll('.cultivation-area-name').forEach(el => {
+                const originalAreaName = el.getAttribute('data-original-area-name');
+                if (originalAreaName && window.translateCityName) {
+                    // Check if area name is actually a city name
+                    const translated = window.translateCityName(originalAreaName);
+                    if (translated && translated !== originalAreaName && !translated.startsWith('city.')) {
+                        el.textContent = translated;
+                    }
+                }
+            });
+            
+            // Translate cultivation area city names - CRITICAL: This must work for all city names
+            document.querySelectorAll('.cultivation-city').forEach(el => {
+                const originalCity = el.getAttribute('data-city');
+                if (originalCity) {
+                    try {
+                        // Always reset to original first to ensure we start fresh
+                        if (el.textContent !== originalCity && currentLang === 'en') {
+                            el.textContent = originalCity;
+                        }
+                        
+                        // Always reset to original first
+                        el.textContent = originalCity;
+                        
+                        // Get translation
+                        const translated = window.translateCityName(originalCity);
+                        
+                        // Apply translation if it's different and valid
+                        if (translated && translated !== originalCity && !translated.startsWith('city.')) {
+                            el.textContent = translated;
+                            console.log('City translated successfully:', originalCity, '->', translated);
+                        } else if (currentLang !== 'en') {
+                            // If language is not English but translation is same, try direct translation
+                            const cityKey = 'city.' + originalCity.toLowerCase().replace(/\s+/g, '');
+                            const directTranslation = window.getTranslation(cityKey);
+                            if (directTranslation && directTranslation !== cityKey) {
+                                el.textContent = directTranslation;
+                                console.log('City translated via direct key:', originalCity, '->', directTranslation);
+                            } else {
+                                console.log('Translation failed for:', originalCity, 'Key:', cityKey, 'Result:', directTranslation);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error translating city name:', originalCity, e);
+                    }
+                } else {
+                    // No data-city attribute, try to translate the current text
+                    const currentText = el.textContent.trim();
+                    if (currentText && currentText !== '') {
+                        try {
+                            const translated = window.translateCityName(currentText);
+                            if (translated && translated !== currentText && !translated.startsWith('city.')) {
+                                el.textContent = translated;
+                            }
+                        } catch (e) {
+                            console.error('Error translating city name from text:', e);
+                        }
+                    }
+                }
+            });
+            
+            // Translate city dropdown options
+            const citySelect = document.getElementById('profile-city-select');
+            if (citySelect) {
+                Array.from(citySelect.options).forEach(option => {
+                    if (option.value && option.value !== '') {
+                        const translated = window.translateCityName(option.value);
+                        if (translated && translated !== option.value) {
+                            option.textContent = translated;
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Translate on page load with retry mechanism
+        let translationAttempts = 0;
+        const maxTranslationAttempts = 15;
+        
+        function tryTranslateProfileCityNames() {
+            translationAttempts++;
+            if (window.translateCityName && typeof window.translateCityName === 'function' && 
+                window.getTranslation && typeof window.getTranslation === 'function') {
+                // Force translate all area names (if they are city names - the green h3)
+                document.querySelectorAll('.cultivation-area-name').forEach(el => {
+                    const originalAreaName = el.getAttribute('data-original-area-name');
+                    if (originalAreaName) {
+                        el.textContent = originalAreaName; // Reset first
+                        const translated = window.translateCityName(originalAreaName);
+                        if (translated && translated !== originalAreaName && !translated.startsWith('city.')) {
+                            el.textContent = translated;
+                        }
+                    }
+                });
+                
+                // Force translate all city names
+                document.querySelectorAll('.cultivation-city').forEach(el => {
+                    const originalCity = el.getAttribute('data-city');
+                    if (originalCity) {
+                        el.textContent = originalCity; // Reset first
+                        const translated = window.translateCityName(originalCity);
+                        if (translated && translated !== originalCity && !translated.startsWith('city.')) {
+                            el.textContent = translated;
+                        }
+                    }
+                });
+                translateProfileCityNames();
+            } else if (translationAttempts < maxTranslationAttempts) {
+                // Retry if translation function not ready
+                setTimeout(tryTranslateProfileCityNames, 300);
+            }
+        }
+        
+        // Function to try translating plant tags with retry
+        function tryTranslatePlantTags() {
+            if (window.getTranslation && typeof window.getTranslation === 'function') {
+                translatePlantTags();
+            } else {
+                // Retry if translation function not ready
+                setTimeout(tryTranslatePlantTags, 200);
+            }
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                // Try multiple times to ensure translation happens
+                setTimeout(tryTranslateProfileCityNames, 100);
+                setTimeout(tryTranslateProfileCityNames, 500);
+                setTimeout(tryTranslateProfileCityNames, 1000);
+                setTimeout(tryTranslatePlantTags, 100);
+                setTimeout(tryTranslatePlantTags, 500);
+                setTimeout(tryTranslatePlantTags, 1000);
+            });
+        } else {
+            // Try multiple times to ensure translation happens
+            setTimeout(tryTranslateProfileCityNames, 100);
+            setTimeout(tryTranslateProfileCityNames, 500);
+            setTimeout(tryTranslateProfileCityNames, 1000);
+            setTimeout(tryTranslatePlantTags, 100);
+            setTimeout(tryTranslatePlantTags, 500);
+            setTimeout(tryTranslatePlantTags, 1000);
+        }
+        
+        // Function to translate plant tags
+        function translatePlantTags() {
+            if (!window.getTranslation || typeof window.getTranslation !== 'function') return;
+            
+            document.querySelectorAll('.plant-tag').forEach(tag => {
+                const originalName = tag.getAttribute('data-original-plant-name');
+                if (originalName) {
+                    const translated = translateVegetableName(originalName);
+                    if (translated && translated !== originalName) {
+                        tag.textContent = translated;
+                    }
+                }
+            });
+        }
+        
+        // Re-translate when language changes
+        window.addEventListener('languageChanged', function() {
+            // Reset attempts counter for retry
+            translationAttempts = 0;
+            
+            // Force re-translate city names - MUST WORK
+            function forceTranslateCityNames() {
+                if (!window.translateCityName || typeof window.translateCityName !== 'function') {
+                    console.log('translateCityName not available, retrying...');
+                    setTimeout(forceTranslateCityNames, 200);
+                    return;
+                }
+                
+                // Translate area names if they are city names (the green h3 text)
+                document.querySelectorAll('.cultivation-area-name').forEach(el => {
+                    const originalAreaName = el.getAttribute('data-original-area-name');
+                    if (originalAreaName) {
+                        el.textContent = originalAreaName; // Reset first
+                        const translated = window.translateCityName(originalAreaName);
+                        if (translated && translated !== originalAreaName && !translated.startsWith('city.')) {
+                            el.textContent = translated;
+                            console.log('Area name translated:', originalAreaName, '->', translated);
+                        }
+                    }
+                });
+                
+                document.querySelectorAll('.cultivation-city').forEach(el => {
+                    const originalCity = el.getAttribute('data-city');
+                    if (originalCity) {
+                        // Always reset to original first to ensure fresh translation
+                        el.textContent = originalCity;
+                        
+                        // Get current language
+                        const currentLang = window.currentLanguage || localStorage.getItem('language') || 'en';
+                        
+                        // Force translation
+                        const translated = window.translateCityName(originalCity);
+                        
+                        // Apply translation if valid
+                        if (translated && translated !== originalCity && !translated.startsWith('city.')) {
+                            el.textContent = translated;
+                            console.log('City translated:', originalCity, '->', translated, 'Language:', currentLang);
+                        } else if (currentLang !== 'en') {
+                            // Try direct translation as fallback
+                            const cityKey = 'city.' + originalCity.toLowerCase().replace(/\s+/g, '');
+                            const directTranslation = window.getTranslation(cityKey);
+                            if (directTranslation && directTranslation !== cityKey) {
+                                el.textContent = directTranslation;
+                                console.log('City translated via direct key:', originalCity, '->', directTranslation);
+                            } else {
+                                console.log('Translation issue:', {
+                                    original: originalCity,
+                                    translated: translated,
+                                    currentLang: currentLang,
+                                    translateCityNameExists: typeof window.translateCityName === 'function',
+                                    getTranslationExists: typeof window.getTranslation === 'function'
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Call immediately and with delays
+            forceTranslateCityNames();
+            setTimeout(forceTranslateCityNames, 100);
+            setTimeout(forceTranslateCityNames, 300);
+            setTimeout(forceTranslateCityNames, 500);
+            setTimeout(forceTranslateCityNames, 1000);
+            
+            // Also use the regular function
+            translateProfileCityNames();
+            setTimeout(translateProfileCityNames, 200);
+            setTimeout(translateProfileCityNames, 600);
+            
+            // Re-translate all plant name dropdowns
+            updateAllPlantNameDropdowns();
+            // Re-translate plant tags
+            translatePlantTags();
+        });
+        
+        // Function to translate vegetable name
+        function translateVegetableName(englishName) {
+            if (!window.getTranslation || !englishName) return englishName;
+            
+            // Extract base name if it contains parentheses (e.g., "Beans (Bonchi)" -> "Beans")
+            const baseNameMatch = englishName.match(/^([^(]+)/);
+            const baseName = baseNameMatch ? baseNameMatch[1].trim() : englishName;
+
+            // Map common vegetable names to translation keys (case-insensitive)
+            const vegetableMap = {
+                'beans': 'vegetable.beans',
+                'black gram': 'vegetable.blackGram',
+                'chickpeas': 'vegetable.chickpeas',
+                'corn': 'vegetable.corn',
+                'drumstick': 'vegetable.drumstick',
+                'fenugreek': 'vegetable.fenugreek',
+                'green gram': 'vegetable.greenGram',
+                'yard long beans': 'vegetable.yardLongBeans',
+                'lentils': 'vegetable.lentils',
+                'okra': 'vegetable.okra',
+                'soybean': 'vegetable.soybean',
+                'cowpea': 'vegetable.cowpea',
+                'pigeon pea': 'vegetable.pigeonPea',
+                'lima beans': 'vegetable.limaBeans',
+                'winged beans': 'vegetable.wingedBeans',
+                'horse gram': 'vegetable.horseGram',
+                'rice': 'vegetable.rice',
+                'finger millet': 'vegetable.fingerMillet',
+                'maize': 'vegetable.maize',
+                'sorghum': 'vegetable.sorghum',
+                'tomato': 'vegetable.tomato',
+                'ash plantain': 'vegetable.ashPlantain',
+                'breadfruit': 'vegetable.breadfruit',
+                'jackfruit': 'vegetable.jackfruit',
+                'tender jackfruit': 'vegetable.tenderJackfruit',
+                'capsicum': 'vegetable.capsicum',
+                'green chilies': 'vegetable.greenChilies',
+                'red chilies': 'vegetable.redChilies',
+                'bell pepper': 'vegetable.bellPepper',
+                'brinjal': 'vegetable.brinjal',
+                'thai eggplant': 'vegetable.thaiEggplant',
+                'cucumber': 'vegetable.cucumber',
+                'bitter gourd': 'vegetable.bitterGourd',
+                'snake gourd': 'vegetable.snakeGourd',
+                'ridge gourd': 'vegetable.ridgeGourd',
+                'bottle gourd': 'vegetable.bottleGourd',
+                'ash pumpkin': 'vegetable.ashPumpkin',
+                'pumpkin': 'vegetable.pumpkin',
+                'watermelon': 'vegetable.watermelon',
+                'musk melon': 'vegetable.muskMelon',
+                'cantaloupe': 'vegetable.cantaloupe',
+                'cabbage': 'vegetable.cabbage',
+                'lettuce': 'vegetable.lettuce',
+                'spinach': 'vegetable.spinach',
+                'amaranth leaves': 'vegetable.amaranthLeaves',
+                'gotukola': 'vegetable.gotukola',
+                'kangkung': 'vegetable.kangkung',
+                'agati leaves': 'vegetable.agatiLeaves',
+                'mint': 'vegetable.mint',
+                'curry leaves': 'vegetable.curryLeaves',
+                'coriander leaves': 'vegetable.corianderLeaves',
+                'fenugreek leaves': 'vegetable.fenugreekLeaves',
+                'mustard greens': 'vegetable.mustardGreens',
+                'radish leaves': 'vegetable.radishLeaves',
+                'beetroot leaves': 'vegetable.beetrootLeaves',
+                'sweet potato leaves': 'vegetable.sweetPotatoLeaves',
+                'cassava leaves': 'vegetable.cassavaLeaves',
+                'pumpkin leaves': 'vegetable.pumpkinLeaves',
+                'drumstick leaves': 'vegetable.drumstickLeaves',
+                'moringa leaves': 'vegetable.moringaLeaves',
+                'rocket leaves': 'vegetable.rocketLeaves',
+                'basil': 'vegetable.basil',
+                'spring onions': 'vegetable.springOnions',
+                'leeks': 'vegetable.leeks',
+                'celery': 'vegetable.celery',
+                'chinese cabbage': 'vegetable.chineseCabbage',
+                'pak choi': 'vegetable.pakChoi',
+                'bok choy': 'vegetable.bokChoy',
+                'potato': 'vegetable.potato',
+                'sweet potato': 'vegetable.sweetPotato',
+                'cassava': 'vegetable.cassava',
+                'carrot': 'vegetable.carrot',
+                'radish': 'vegetable.radish',
+                'beetroot': 'vegetable.beetroot',
+                'onion': 'vegetable.onion',
+                'garlic': 'vegetable.garlic',
+                'ginger': 'vegetable.ginger',
+                'turmeric': 'vegetable.turmeric',
+                'yam': 'vegetable.yam',
+                'elephant foot yam': 'vegetable.elephantFootYam',
+                'taro': 'vegetable.taro',
+                'arrowroot': 'vegetable.arrowroot',
+                'lotus roots': 'vegetable.lotusRoots',
+                'kohila': 'vegetable.kohila',
+                'chinese potato': 'vegetable.chinesePotato',
+                'purple yam': 'vegetable.purpleYam',
+                'water yam': 'vegetable.waterYam',
+                'greater yam': 'vegetable.greaterYam',
+                'lesser yam': 'vegetable.lesserYam',
+                'turnip': 'vegetable.turnip',
+                'parsnip': 'vegetable.parsnip',
+                'daikon radish': 'vegetable.daikonRadish'
+            };
+            
+            const translationKey = vegetableMap[baseName.toLowerCase()];
+            if (translationKey) {
+                const translated = window.getTranslation(translationKey);
+                if (translated && translated !== translationKey) {
+                    return translated;
+                }
+            }
+            return englishName;
+        }
+        
+        // Function to update plant name dropdown based on category
+        function updatePlantNameDropdown(categorySelect, cultivationId) {
+            const category = categorySelect.value;
+            const plantNameSelect = categorySelect.closest('form').querySelector('.plant-name-select');
+            if (!plantNameSelect) return;
+            
+            // Clear existing options
+            plantNameSelect.innerHTML = '<option value="" data-i18n="profile.selectPlant">Select Plant</option>';
+            
+            // Get vegetables for the selected category
+            if (typeof SRI_LANKAN_VEGETABLES !== 'undefined' && SRI_LANKAN_VEGETABLES[category]) {
+                SRI_LANKAN_VEGETABLES[category].forEach(vegetable => {
+                    const option = document.createElement('option');
+                    option.value = vegetable;
+                    // Translate vegetable name
+                    option.textContent = translateVegetableName(vegetable);
+                    option.setAttribute('data-original-name', vegetable);
+                    plantNameSelect.appendChild(option);
+                });
+            }
+            
+            // Translate the "Select Plant" option
+            if (window.getTranslation && typeof window.getTranslation === 'function') {
+                const selectOption = plantNameSelect.querySelector('option[value=""]');
+                if (selectOption) {
+                    const translated = window.getTranslation('profile.selectPlant');
+                    if (translated && translated !== 'profile.selectPlant') {
+                        selectOption.textContent = translated;
+                    }
+                }
+            }
+        }
+        
+        // Function to update all plant name dropdowns (for language changes)
+        function updateAllPlantNameDropdowns() {
+            document.querySelectorAll('.plant-category-select').forEach(categorySelect => {
+                const category = categorySelect.value;
+                if (category) {
+                    const plantNameSelect = categorySelect.closest('form').querySelector('.plant-name-select');
+                    if (plantNameSelect) {
+                        const selectedValue = plantNameSelect.value;
+                        const selectedOriginal = plantNameSelect.querySelector(`option[value="${selectedValue}"]`)?.getAttribute('data-original-name');
+                        
+                        // Rebuild options with translations
+                        plantNameSelect.innerHTML = '<option value="" data-i18n="profile.selectPlant">Select Plant</option>';
+                        
+                        if (typeof SRI_LANKAN_VEGETABLES !== 'undefined' && SRI_LANKAN_VEGETABLES[category]) {
+                            SRI_LANKAN_VEGETABLES[category].forEach(vegetable => {
+                                const option = document.createElement('option');
+                                option.value = vegetable;
+                                option.textContent = translateVegetableName(vegetable);
+                                option.setAttribute('data-original-name', vegetable);
+                                if (selectedOriginal === vegetable) {
+                                    option.selected = true;
+                                }
+                                plantNameSelect.appendChild(option);
+                            });
+                        }
+                        
+                        // Translate the "Select Plant" option
+                        if (window.getTranslation && typeof window.getTranslation === 'function') {
+                            const selectOption = plantNameSelect.querySelector('option[value=""]');
+                            if (selectOption) {
+                                const translated = window.getTranslation('profile.selectPlant');
+                                if (translated && translated !== 'profile.selectPlant') {
+                                    selectOption.textContent = translated;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize plant name dropdowns on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(function() {
+                    document.querySelectorAll('.plant-category-select').forEach(categorySelect => {
+                        if (categorySelect.value) {
+                            const cultivationId = categorySelect.closest('form').querySelector('input[name="cultivation_id"]')?.value;
+                            updatePlantNameDropdown(categorySelect, cultivationId);
+                        }
+                    });
+                }, 500);
+            });
+        } else {
+            setTimeout(function() {
+                document.querySelectorAll('.plant-category-select').forEach(categorySelect => {
+                    if (categorySelect.value) {
+                        const cultivationId = categorySelect.closest('form').querySelector('input[name="cultivation_id"]')?.value;
+                        updatePlantNameDropdown(categorySelect, cultivationId);
+                    }
+                });
+            }, 500);
+        }
+    </script>
+    <script src="{{ url_for('static', filename='vegetables_data.js') }}"></script>
+{% endblock %}

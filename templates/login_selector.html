@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - WeatherGuard Harvest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='plant_tracking/styles.css') }}">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: linear-gradient(135deg, #a8e063 0%, #2d5a3d 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: Inter, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 0;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            flex: 1;
+            min-height: calc(100vh - 200px);
+            padding: 20px;
+            padding-bottom: 20px;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 18px 34px rgba(0,0,0,0.12);
+            overflow: hidden;
+            max-width: 900px;
+            width: 100%;
+            margin: auto;
+        }
+        .login-header {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            color: #1a3d2e;
+            padding: 40px;
+            text-align: center;
+        }
+        .login-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1a3d2e;
+        }
+        .login-header p {
+            margin: 10px 0 0 0;
+            color: #2d5a3d;
+            font-weight: 500;
+        }
+        .login-options {
+            padding: 50px;
+        }
+        .option-card {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            height: 100%;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            box-shadow: 0 18px 34px rgba(0,0,0,0.12);
+        }
+        .option-card:hover {
+            border-color: #388659;
+            transform: translateY(-5px);
+            box-shadow: 0 25px 45px rgba(0,0,0,0.15);
+            background: rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            color: inherit;
+        }
+        .option-card.active {
+            border-color: #388659;
+            background: rgba(58, 167, 109, 0.2);
+        }
+        .option-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #388659;
+        }
+        .option-card:hover .option-icon {
+            color: #2d7d52;
+        }
+        .option-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: #1a3d2e;
+        }
+        .option-description {
+            color: #2d5a3d;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .back-link a {
+            color: #388659;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .back-link a:hover {
+            color: #1a3d2e;
+            text-decoration: underline;
+        }
+        .user-option-wrapper {
+            margin-bottom: 20px;
+        }
+        .admin-toggle-wrapper {
+            margin-top: 20px;
+        }
+        .admin-toggle-btn {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 15px 25px;
+            width: 100%;
+            cursor: pointer;
+            color: #1a3d2e;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .admin-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: #388659;
+        }
+        .admin-toggle-btn i {
+            transition: transform 0.3s ease;
+        }
+        .admin-toggle-btn.active i {
+            transform: rotate(180deg);
+        }
+        .admin-section {
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .admin-card {
+            margin-top: 0;
+        }
+    </style>
+    <!-- Load translations.js with error handling and diagnostics -->
+    <script>
+        console.log('=== Loading translations.js ===');
+        var script = document.createElement('script');
+        script.src = "{{ url_for('static', filename='translations.js') }}";
+        script.onload = function() {
+            console.log('✓ translations.js loaded successfully');
+            console.log('window.setLanguage after load:', typeof window.setLanguage);
+            if (typeof window.setLanguage !== 'function') {
+                console.error('✗ translations.js loaded but setLanguage is not a function!');
+                console.error('This means there is likely a JavaScript error in translations.js');
+            }
+        };
+        script.onerror = function() {
+            console.error('✗ Failed to load translations.js - file not found or network error');
+            window.translationsLoadError = true;
+        };
+        document.head.appendChild(script);
+    </script>
+    
+    <!-- Inline translation system - works immediately -->
+    <script>
+        // Wait a moment for translations.js to load, then check
+        setTimeout(function() {
+            console.log('Checking translations.js status...');
+            console.log('window.setLanguage:', typeof window.setLanguage);
+            console.log('window.translationsLoadError:', window.translationsLoadError);
+            
+            if (!window.setLanguage && !window.translationsLoadError) {
+                console.warn('⚠ translations.js loaded but setLanguage not available - script may have errors');
+            }
+        }, 100);
+        
+        // Simple, reliable language switching that always works
+        window.switchLanguage = function(lang) {
+            console.log('=== switchLanguage called with:', lang, '===');
+            
+            // Save language preference immediately
+            localStorage.setItem('language', lang);
+            localStorage.setItem('lang', lang);
+            console.log('Language saved to localStorage:', lang);
+            
+            // Try to use translations.js if available
+            if (window.setLanguage && typeof window.setLanguage === 'function' && window.setLanguage !== window.switchLanguage) {
+                console.log('✓ Using translations.js setLanguage (no reload needed)');
+                try {
+                    var result = window.setLanguage(lang);
+                    console.log('setLanguage returned:', result);
+                    return;
+                } catch (e) {
+                    console.error('✗ Error calling setLanguage:', e);
+                    console.error('Error stack:', e.stack);
+                    // Fall through to reload
+                }
+            } else {
+                console.warn('⚠ setLanguage not available, will reload page');
+            }
+            
+            // Fallback: reload page to apply language
+            // The language is saved in localStorage, so on reload it will be applied
+            console.log('Reloading page to apply language change...');
+            window.location.reload();
+        };
+        
+        console.log('✓ switchLanguage function available');
+    </script>
+</head>
+<body>
+    <header>
+        <nav aria-label="Main navigation">
+            <a href="{{ url_for('home') }}" class="logo">
+                <img src="{{ url_for('static', filename='images/HLogo 01.png') }}" alt="WeatherGuard Harvest" class="logo-image">
+            </a>
+            <ul>
+                <!-- Home -->
+                <li><a href="{{ url_for('home') }}" {% if request.endpoint == 'home' %}aria-current="page"{% endif %} data-i18n="nav.home">Home</a></li>
+                
+                <!-- Weather with dropdown -->
+                <li class="dropdown">
+                    <a href="{{ url_for('weather') }}" class="dropdown-toggle" data-i18n="nav.weather">Weather</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('plant_tracking') }}" data-i18n="nav.plantTracking">Plant Tracking</a></li>
+                        <li><a href="{{ url_for('cost_profit_analysis') }}" data-i18n="nav.costProfitTool">Cost-Profit Tool</a></li>
+                        <li><a href="{{ url_for('analytics') }}" data-i18n="nav.futureAnalyse">Future Analyse</a></li>
+                        <li><a href="{{ url_for('sms_alerts') }}" data-i18n="nav.smsAlerts">SMS Alerts</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Support with dropdown -->
+                <li class="dropdown">
+                    <a href="{{ url_for('support') if current_user.is_authenticated else url_for('about_us') }}" class="dropdown-toggle" data-i18n="nav.support">Support</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('about_us') }}" data-i18n="nav.aboutUs">About Us</a></li>
+                        {% if current_user.is_authenticated %}
+                        <li><a href="{{ url_for('support') }}" data-i18n="nav.contactSupport">Contact Support</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+                
+                <!-- User login/account section -->
+                {% if current_user.is_authenticated %}
+                <li class="dropdown user-account">
+                    <a href="#" class="dropdown-toggle user-account-link">
+                        {% if current_user.profile and current_user.profile.profile_picture %}
+                            <img src="{{ url_for('static', filename='uploads/profile_pictures/' + current_user.profile.profile_picture) }}" alt="Profile" class="profile-picture-nav">
+                        {% else %}
+                            <div class="profile-picture-nav default-avatar">{{ current_user.username[0].upper() }}</div>
+                        {% endif %}
+                        <span class="username-text">{{ current_user.username }}</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('profile') }}" data-i18n="nav.profile">Profile</a></li>
+                        <li><a href="{{ url_for('settings') }}" data-i18n="nav.settings">Settings</a></li>
+                        <li><a href="{{ url_for('logout') }}" data-i18n="nav.logout">Logout</a></li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="dropdown user-account">
+                    <a href="{{ url_for('login_selector') }}" class="dropdown-toggle" data-i18n="nav.userLogin">User Login</a>
+                </li>
+                {% endif %}
+                
+                <!-- Language selector -->
+                <li class="dropdown language-selector">
+                    <a href="#" class="dropdown-toggle language-selector-toggle" data-i18n="nav.language"><i class="fas fa-language"></i> Language</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#" class="lang-select" data-lang="en" onclick="switchLanguage('en'); return false;">English</a></li>
+                        <li><a href="#" class="lang-select" data-lang="si" onclick="switchLanguage('si'); return false;">සිංහල</a></li>
+                        <li><a href="#" class="lang-select" data-lang="ta" onclick="switchLanguage('ta'); return false;">தமிழ்</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="login-container">
+            <div class="login-header">
+                <h1><i class="fas fa-shield-alt"></i> <span data-i18n="loginSelector.title">WeatherGuard Harvest</span></h1>
+                <p data-i18n="loginSelector.subtitle">Choose your login type</p>
+            </div>
+            <div class="login-options">
+                <!-- Normal User Login - Always visible -->
+                <div class="user-option-wrapper">
+                    <a href="{{ url_for('user_login') }}" class="option-card">
+                        <div class="option-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="option-title" data-i18n="loginSelector.normalUser">Normal User</div>
+                        <div class="option-description" data-i18n="loginSelector.normalUserDesc">
+                            Access the website features, weather data, analytics, and cost-profit analysis tools.
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- Admin User Login - Collapsible section -->
+                <div class="admin-toggle-wrapper">
+                    <button type="button" class="admin-toggle-btn" onclick="toggleAdminSection()">
+                        <i class="fas fa-chevron-down" id="admin-arrow"></i>
+                        <span data-i18n="loginSelector.showAdmin">Show Admin Login</span>
+                    </button>
+                    <div class="admin-section" id="admin-section" style="display: none;">
+                        <a href="{{ url_for('admin_login') }}" class="option-card admin-card">
+                            <div class="option-icon">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                            <div class="option-title" data-i18n="loginSelector.adminUser">Admin User</div>
+                            <div class="option-description" data-i18n="loginSelector.adminUserDesc">
+                                Access the admin panel to manage users, view system logs, and configure settings.
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="back-link">
+                    <a href="{{ url_for('home') }}"><i class="fas fa-arrow-left"></i> <span data-i18n="loginSelector.backToHome">Back to Home</span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Initialize translation system after page load -->
+    <script>
+        // Force translation initialization - this runs after translations.js loads
+        (function() {
+            function forceTranslation() {
+                var savedLang = localStorage.getItem('language') || localStorage.getItem('lang') || 'en';
+                console.log('Force translation called, saved language:', savedLang);
+                console.log('window.setLanguage available:', typeof window.setLanguage);
+                
+                // If translations.js failed to load, just set the lang attribute
+                if (window.translationsLoadError) {
+                    console.warn('⚠ translations.js failed to load, setting lang attribute only');
+                    if (document.documentElement) {
+                        document.documentElement.lang = savedLang;
+                    }
+                    return;
+                }
+                
+                // Try multiple times to ensure translation happens
+                var attempts = 0;
+                var maxAttempts = 10;
+                
+                function tryTranslate() {
+                    attempts++;
+                    if (window.setLanguage && typeof window.setLanguage === 'function') {
+                        console.log('Calling setLanguage with:', savedLang, '(attempt', attempts + ')');
+                        try {
+                            window.setLanguage(savedLang);
+                            console.log('✓ Translation applied successfully');
+                            return; // Success, stop retrying
+                        } catch (e) {
+                            console.error('Error calling setLanguage:', e);
+                            if (attempts < maxAttempts) {
+                                setTimeout(tryTranslate, 200);
+                            } else {
+                                console.error('✗ Failed after', maxAttempts, 'attempts');
+                            }
+                        }
+                    } else {
+                        if (attempts < maxAttempts) {
+                            console.log('setLanguage not available yet, retrying... (attempt', attempts + ')');
+                            setTimeout(tryTranslate, 200);
+                        } else {
+                            console.error('✗ setLanguage not available after', maxAttempts, 'attempts');
+                            console.error('This usually means translations.js has a JavaScript error. Check the browser console for errors.');
+                        }
+                    }
+                }
+                
+                // Start trying immediately
+                tryTranslate();
+            }
+            
+            // Run after a short delay to let scripts load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(forceTranslation, 100);
+                });
+            } else {
+                // DOM already loaded, run after a short delay
+                setTimeout(forceTranslation, 100);
+            }
+            
+            // Also try after longer delays as backup
+            setTimeout(forceTranslation, 500);
+            setTimeout(forceTranslation, 1000);
+        })();
+    </script>
+    <script>
+        function toggleAdminSection() {
+            const adminSection = document.getElementById('admin-section');
+            const toggleBtn = document.querySelector('.admin-toggle-btn');
+            const arrow = document.getElementById('admin-arrow');
+            
+            if (adminSection.style.display === 'none') {
+                adminSection.style.display = 'block';
+                toggleBtn.classList.add('active');
+                // Update text based on language
+                const toggleText = toggleBtn.querySelector('span');
+                if (toggleText && window.getTranslation && typeof window.getTranslation === 'function') {
+                    const translated = window.getTranslation('loginSelector.hideAdmin');
+                    if (translated && translated !== 'loginSelector.hideAdmin') {
+                        toggleText.textContent = translated;
+                    } else {
+                        toggleText.textContent = 'Hide Admin Login';
+                    }
+                } else {
+                    toggleText.textContent = 'Hide Admin Login';
+                }
+            } else {
+                adminSection.style.display = 'none';
+                toggleBtn.classList.remove('active');
+                // Update text based on language
+                const toggleText = toggleBtn.querySelector('span');
+                if (toggleText && window.getTranslation && typeof window.getTranslation === 'function') {
+                    const translated = window.getTranslation('loginSelector.showAdmin');
+                    if (translated && translated !== 'loginSelector.showAdmin') {
+                        toggleText.textContent = translated;
+                    } else {
+                        toggleText.textContent = 'Show Admin Login';
+                    }
+                } else {
+                    toggleText.textContent = 'Show Admin Login';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+

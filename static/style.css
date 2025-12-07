@@ -1,0 +1,1649 @@
+/* static/style.css */
+/* Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f9f4;
+    color: #333;
+}
+
+/* Global Hyperlink Colors */
+a {
+    color: #a8e063;
+    text-decoration: none;
+}
+
+a:visited {
+    color: #89c07a;
+}
+
+a:hover {
+    color: #c4f08f;
+    text-decoration: underline;
+}
+
+a:active {
+    color: #7db850;
+}
+
+/* Header and Navigation */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+nav {
+    background-color: #388659;
+    color: white;
+    padding: 7.5px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+nav .logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+}
+
+nav .logo:hover {
+    opacity: 0.8;
+}
+
+nav .logo-image {
+    height: 60px;
+    width: auto;
+    max-width: 240px;
+    object-fit: contain;
+}
+
+nav > ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1em;
+    padding: 5px 10px;
+    transition: background-color 0.3s;
+}
+
+nav ul li a:hover, nav ul li a[aria-current="page"] {
+    background-color: #52AA8A;
+    border-radius: 5px;
+}
+
+/* Dropdown Menu Styles */
+nav ul li.dropdown {
+    position: relative;
+}
+
+nav ul li.dropdown > a.dropdown-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1em;
+    padding: 5px 10px;
+    transition: background-color 0.3s;
+    cursor: pointer;
+    position: relative;
+}
+
+/* Add small arrow icon after dropdown toggle text */
+nav ul li.dropdown > a.dropdown-toggle::after {
+    content: '\f107'; /* Font Awesome chevron-down icon */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.7em;
+    margin-left: 5px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    display: inline-block;
+    opacity: 0.85;
+    vertical-align: middle;
+}
+
+/* Hide arrow for user login when not authenticated (no dropdown menu) */
+/* Use a more specific selector to hide arrow when there's no user-account-link class */
+nav ul li.dropdown.user-account > a.dropdown-toggle:not(.user-account-link)::after {
+    display: none;
+}
+
+/* Rotate arrow when dropdown is hovered */
+nav ul li.dropdown:hover > a.dropdown-toggle::after {
+    transform: rotate(180deg);
+}
+
+nav ul li.dropdown > a.dropdown-toggle:hover {
+    background-color: #52AA8A;
+    border-radius: 5px;
+}
+
+/* Dropdown menu - hidden by default */
+nav ul li.dropdown {
+    position: relative;
+}
+
+nav ul li.dropdown .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+    min-width: 180px;
+    z-index: 1000;
+    margin-top: 5px;
+    padding: 5px 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease 1s, visibility 0.2s ease 1s; /* 1 second delay before hiding */
+    pointer-events: none;
+}
+
+/* Show dropdown on hover - appears after 0.3s delay */
+nav ul li.dropdown:hover .dropdown-menu {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.2s ease 0.3s, visibility 0.2s ease 0.3s; /* 0.3s delay before showing */
+}
+
+/* Keep dropdown visible when hovering over the menu itself - no delay */
+nav ul li.dropdown .dropdown-menu:hover {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.2s ease 0s, visibility 0.2s ease 0s; /* No delay when hovering over menu */
+}
+
+/* Add invisible bridge above dropdown for easier mouse movement */
+nav ul li.dropdown .dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: transparent;
+}
+
+nav ul li.dropdown .dropdown-menu li {
+    display: block;
+    margin: 0;
+}
+
+nav ul li.dropdown .dropdown-menu li a {
+    color: #333;
+    padding: 10px 15px;
+    display: block;
+    text-decoration: none;
+    transition: background-color 0.3s;
+    font-weight: 400;
+}
+
+nav ul li.dropdown .dropdown-menu li a:hover {
+    background-color: #f0f0f0;
+    color: #52AA8A;
+}
+
+/* User Account Section - No extra margin, aligned with other items */
+
+nav ul li.dropdown.user-account .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+/* Circular Profile Picture in Navigation */
+.profile-picture-nav {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid white;
+    display: inline-block;
+}
+
+.profile-picture-nav.default-avatar {
+    background-color: #52AA8A;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 11px;
+    border: 1.5px solid white;
+}
+
+.user-account-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+/* Add arrow to user account dropdown */
+nav ul li.dropdown.user-account > a.dropdown-toggle.user-account-link::after {
+    content: '\f107'; /* Font Awesome chevron-down icon */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.75em;
+    margin-left: 4px;
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+/* Rotate arrow when user account dropdown is hovered */
+nav ul li.dropdown.user-account:hover > a.dropdown-toggle.user-account-link::after {
+    transform: rotate(180deg);
+}
+
+.username-text {
+    color: white;
+    font-size: 1em;
+}
+
+/* Language Selector */
+.language-selector {
+    position: relative;
+}
+
+.language-selector-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1em;
+    padding: 5px 10px;
+    transition: background-color 0.3s;
+    cursor: pointer;
+    position: relative;
+}
+
+/* Add arrow to language selector - positioned after the language icon */
+.language-selector .language-selector-toggle::after {
+    content: '\f107'; /* Font Awesome chevron-down icon */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.75em;
+    margin-left: 6px;
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+/* Rotate arrow when language dropdown is hovered */
+.language-selector:hover .language-selector-toggle::after {
+    transform: rotate(180deg);
+}
+
+.language-selector-toggle:hover {
+    background-color: #52AA8A;
+    border-radius: 5px;
+}
+
+.language-selector-toggle i {
+    font-size: 0.9em;
+}
+
+.language-selector .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
+/* Ensure language selector dropdown links are clickable */
+.language-selector .dropdown-menu {
+    pointer-events: auto !important;
+}
+
+.language-selector .dropdown-menu li {
+    pointer-events: auto !important;
+}
+
+.language-selector .dropdown-menu li a {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1001;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.language-selector:hover .dropdown-menu,
+.language-selector .dropdown-menu:hover,
+.language-selector .dropdown-menu:active {
+    pointer-events: auto !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Keep dropdown open when clicking on language links */
+.language-selector .dropdown-menu li a:active,
+.language-selector .dropdown-menu li a:focus,
+.language-selector .dropdown-menu li a:hover {
+    pointer-events: auto !important;
+    background-color: #f0f0f0 !important;
+}
+
+/* Prevent dropdown from closing when clicking inside */
+.language-selector .dropdown-menu * {
+    pointer-events: auto !important;
+}
+
+/* User Menu (legacy support) */
+.user-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.user-menu > span {
+    color: white;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.user-menu > span:hover {
+    background-color: #52AA8A;
+}
+
+.user-menu ul {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 5px;
+    min-width: 150px;
+    z-index: 1000;
+}
+
+.user-menu:hover ul {
+    display: block;
+}
+
+.user-menu ul li {
+    display: block;
+}
+
+.user-menu ul li a {
+    color: #333;
+    padding: 10px 15px;
+    display: block;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.user-menu ul li a:hover {
+    background-color: #f0f0f0;
+    color: #52AA8A;
+}
+
+/* Hero Section */
+.hero {
+    background: linear-gradient(to right, #a8e063, #56ab2f);
+    color: white;
+    padding: 45px 20px;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+}
+
+.hero p {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+}
+
+.hero .btn {
+    padding: 12px 25px;
+    font-size: 1em;
+    background-color: white;
+    color: #52AA5E;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.hero .btn:hover, .hero .btn:focus {
+    background-color: #e0f2e9;
+    outline: 2px solid #52AA5E;
+}
+
+/* Welcome Greeting */
+.welcome-greeting {
+    text-align: center;
+    color: #388659;
+    margin: 20px 0;
+    font-size: 1.8em;
+    font-weight: 600;
+}
+
+/* Features Section */
+.features {
+    background-image: url('/static/images/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    padding: 60px 10px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.features h2 {
+    font-size: 2.2em;
+    margin-bottom: 20px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+}
+
+.features > p {
+    font-size: 1.2em;
+    margin-bottom: 40px;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.feature-box {
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    background-color: rgba(0, 0, 0, 0.7);
+    text-align: center;
+    color: #ffffff;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 200px;
+}
+
+.feature-box:hover, .feature-box:focus {
+    background-color: #52AA8A;
+    transform: translateY(-5px);
+}
+
+.feature-box h3 {
+    font-size: 1.4em;
+    margin-bottom: 15px;
+}
+
+.feature-box p {
+    margin-bottom: 20px;
+    line-height: 1.6;
+    flex: 1;
+}
+
+.feature-link {
+    color: #a8e063;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 8px 16px;
+    border: 2px solid #a8e063;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    display: inline-block;
+    margin-top: auto;
+}
+
+.feature-link:hover {
+    background-color: #a8e063;
+    color: #333;
+}
+
+/* Call to Action Section */
+.cta-section {
+    background: linear-gradient(135deg, #388659, #52AA8A);
+    color: white;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.cta-section h2 {
+    font-size: 2.2em;
+    margin-bottom: 20px;
+}
+
+.cta-section p {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-primary {
+    background-color: #a8e063;
+    color: #333;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #8bc34a;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: white;
+    border: 2px solid white;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: white;
+    color: #388659;
+    transform: translateY(-2px);
+}
+
+/* Video Section */
+.video-section {
+    padding: 60px 20px;
+    text-align: center;
+    background-color: #e0f2e9;
+}
+
+.video-section h2 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.video-section p {
+    font-size: 1.1em;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+}
+
+/* Feedback Section */
+.feedback-section {
+    padding: 60px 20px;
+    text-align: center;
+    background-color: #f4f9f4;
+}
+
+.feedback-section h2 {
+    font-size: 1.8em;
+    margin-bottom: 30px;
+    color: #333;
+}
+
+.feedback-with-photo-container {
+    display: flex;
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 40px;
+    align-items: flex-start;
+}
+
+.feedback-cards-vertical {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.man-photo-vertical {
+    flex: 0 0 400px;
+    min-height: 500px;
+}
+
+.feedback-card {
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    text-align: left;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feedback-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.feedback-card h3 {
+    color: #388659;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.feedback-card p {
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.feedback-card h3 {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+    color: #388659;
+}
+
+.feedback-card p {
+    font-size: 1em;
+    margin: 5px 0;
+}
+
+/* Weather Page Styles */
+.weather-container {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.weather-container h1 {
+    font-size: 2em;
+    margin-bottom: 20px;
+}
+
+.weather-container h2 {
+    font-size: 1.5em;
+    margin: 20px 0;
+}
+
+.weather-btn {
+    padding: 10px 20px;
+    background-color: #52AA5E;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    margin: 10px;
+    display: inline-block;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.weather-btn:hover, .weather-btn:focus {
+    background-color: #e0f2e9;
+    color: #333;
+}
+
+/* Forecast Section */
+.forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.forecast-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.forecast-card h3 {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.forecast-card p {
+    font-size: 1em;
+    margin: 5px 0;
+}
+
+.weather-icon::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    vertical-align: middle;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.weather-icon.clear-sky::before {
+    content: '☀️';
+    font-size: 20px;
+}
+
+.weather-icon.mainly-clear::before,
+.weather-icon.partly-cloudy::before {
+    content: '⛅';
+    font-size: 20px;
+}
+
+.weather-icon.overcast::before {
+    content: '☁️';
+    font-size: 20px;
+}
+
+.weather-icon.light-rain::before,
+.weather-icon.moderate-rain::before,
+.weather-icon.heavy-rain::before {
+    content: '🌧️';
+    font-size: 20px;
+}
+
+.weather-icon.thunderstorm::before {
+    content: '⛈️';
+    font-size: 20px;
+}
+
+.weather-icon.snow::before {
+    content: '❄️';
+    font-size: 20px;
+}
+
+.weather-icon.fog::before {
+    content: '🌫️';
+    font-size: 20px;
+}
+
+/* Location Form */
+.location-form {
+    margin-bottom: 20px;
+}
+
+.location-form form {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.location-form select,
+.location-form input[type="text"],
+.location-form textarea {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    background-color: #e0f2e9;
+    color: #333;
+    width: 100%;
+    max-width: 250px;
+}
+
+.location-form select:focus,
+.location-form input[type="text"]:focus,
+.location-form textarea:focus {
+    outline: 2px solid #52AA5E;
+}
+
+.location-form label {
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.location-form .hint {
+    font-size: 0.8em;
+    color: #e0f2e9;
+    margin-top: 5px;
+    display: block;
+}
+
+#weather-map {
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    height: 300px;
+}
+
+/* Form Container for Login/Signup/Support */
+.form-container {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+.form-group:focus-within label {
+  transform: translateY(-5px);
+  color: #8bc34a;
+}
+.form-group:focus-within {
+    border-color: #8bc34a;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.form-group label {
+    font-size: 1em;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #e0f2e9;
+    color: #333;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: 2px solid #52AA5E;
+}
+
+.form-group .error {
+    color: #ff6b6b;
+    font-size: 0.8em;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Search Section */
+.search-section {
+    text-align: center;
+    padding: 30px 20px;
+    background-color: #e0f2e9;
+}
+
+.search-section h2 {
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.search-section form {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.search-section input {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    background-color: white;
+    color: #333;
+    max-width: 300px;
+}
+
+.search-section input:focus {
+    outline: 2px solid #52AA5E;
+}
+
+.search-section select {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    background-color: white;
+    color: #333;
+    min-width: 200px;
+}
+
+.search-section select:focus {
+    outline: 2px solid #52AA5E;
+}
+
+.search-section button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    background-color: #52AA5E;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.search-section button:hover {
+    background-color: #388659;
+}
+
+/* Flash Messages */
+.flash-success {
+    background-color: #52AA5E;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.flash-error, .flash-warning {
+    background-color: #ff6b6b;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+/* Footer */
+footer {
+    background-color: #388659;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    margin-top: 40px;
+    font-size: 0.9em;
+}
+
+/* Flash Messages */
+.flash-success {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 12px 20px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 1px solid #c3e6cb;
+    text-align: center;
+}
+
+.flash-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 12px 20px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 1px solid #f5c6cb;
+    text-align: center;
+}
+
+/* Analytics Buttons */
+.analytics-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.analytics-btn {
+    color: #a8e063;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 8px 16px;
+    border: 2px solid #a8e063;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    display: inline-block;
+    margin-top: auto;
+}
+
+.analytics-btn:hover {
+    background-color: #a8e063;
+    color: #333;
+}
+
+
+
+/* Clear Data Section */
+.clear-data-section {
+    background: rgba(255, 193, 7, 0.1);
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 25px;
+    margin: 30px 0;
+    text-align: center;
+    backdrop-filter: blur(5px);
+}
+
+.clear-data-section h4 {
+    color: #856404;
+    margin-bottom: 10px;
+    font-size: 1.3em;
+}
+
+.clear-data-section p {
+    color: #856404;
+    margin-bottom: 20px;
+    font-size: 1em;
+}
+
+.clear-btn {
+    background-color: #dc3545;
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.clear-btn:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.clear-btn:active {
+    transform: translateY(0);
+}
+
+/* Man Picture in Feedback Section */
+.man-photo-vertical .man-picture-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.man-photo-vertical .man-picture {
+    width: 100%;
+    height: 500px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.man-photo-vertical .man-picture-container:hover .man-picture {
+    transform: scale(1.05);
+}
+
+.man-photo-vertical .man-picture-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    color: white;
+    padding: 30px 20px 20px;
+    text-align: center;
+}
+
+.man-photo-vertical .man-picture-overlay h3 {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.man-photo-vertical .man-picture-overlay p {
+    font-size: 1em;
+    line-height: 1.5;
+    opacity: 0.95;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    nav ul {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .features {
+        padding: 40px 10px;
+    }
+    
+    .weather-container, .form-container {
+        margin: 30px auto;
+        padding: 15px;
+    }
+    
+    .forecast-grid, .feedback-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .location-form form, .search-section form {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .location-form select,
+    .search-section select {
+        margin-bottom: 10px;
+    }
+    
+    .video-container {
+        padding-bottom: 56.25%;
+    }
+    
+    /* New responsive rules for home page */
+    .hero h1 {
+        font-size: 2em;
+    }
+    
+    .hero p {
+        font-size: 1.1em;
+    }
+    
+    .features h2 {
+        font-size: 1.8em;
+    }
+    
+    .features > p {
+        font-size: 1.1em;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        padding: 0 15px;
+    }
+    
+    .feature-box {
+        padding: 20px;
+    }
+    
+    .analytics-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .analytics-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 0.9em;
+    }
+    
+    .feature-box {
+        min-height: 180px;
+        padding: 20px;
+    }
+    
+    .cta-section h2 {
+        font-size: 1.8em;
+    }
+    
+    .cta-section p {
+        font-size: 1.1em;
+    }
+    
+    .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        max-width: 300px;
+        text-align: center;
+    }
+    
+    .welcome-greeting {
+        font-size: 1.5em;
+        margin: 15px 0;
+    }
+    
+    /* Feedback section responsive */
+    .feedback-with-photo-container {
+        flex-direction: column;
+        gap: 30px;
+    }
+    
+    .man-photo-vertical {
+        flex: none;
+        order: -1; /* Move photo to top on mobile */
+    }
+    
+    .man-photo-vertical .man-picture {
+        height: 300px;
+    }
+    
+    .man-photo-vertical .man-picture-overlay {
+        padding: 20px 15px 15px;
+    }
+    
+    .man-photo-vertical .man-picture-overlay h3 {
+        font-size: 1.3em;
+    }
+    
+    .man-photo-vertical .man-picture-overlay p {
+        font-size: 0.9em;
+    }
+    
+    .feedback-card {
+        padding: 20px;
+    }
+    
+    .feedback-card h3 {
+        font-size: 1.1em;
+    }
+
+    /* Clear button responsive */
+    .clear-data-section {
+        padding: 20px 15px;
+    }
+    
+    .clear-btn {
+        padding: 10px 20px;
+        font-size: 0.9em;
+    }
+}
+
+/* Floating Plant Tracking mini widget - HOVER UNFOLD SYSTEM */
+.plant-widget {
+    position: fixed;
+    right: 20px;
+    top: 60%; /* Move down from center */
+    z-index: 1100;
+    width: 80px; /* Fixed width for collapsed state */
+    height: 145px; /* Expanded height to fully cover button moved 15px down */
+    transition: all 0.3s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    transform: translateY(-50%); /* Center vertically */
+}
+
+.plant-widget-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    border-radius: 15px;
+    padding: 8px; /* Increased padding for more space around content */
+    padding-bottom: 24px; /* Extra padding at bottom to accommodate button moved down */
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease-in-out;
+    overflow: visible; /* Allow button to extend if needed */
+}
+
+/* Plant bubble - PERFECT CIRCLE - OVERRIDE ALL OTHER STYLES */
+.plant-widget .glass-bubble {
+    position: relative !important;
+    width: 70px !important; /* Larger default size */
+    height: 70px !important; /* Larger default size */
+    max-width: 70px !important;
+    min-width: 70px !important;
+    margin: 0 !important;
+    z-index: 2;
+    transition: all 0.3s ease-in-out;
+    border-radius: 50% !important; /* Force perfect circle */
+    aspect-ratio: 1/1 !important; /* Ensure 1:1 ratio */
+    justify-self: unset !important;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)) !important;
+    perspective: 1200px;
+    animation: floatY 6s ease-in-out infinite;
+}
+
+/* Panel content - hidden by default but button visible when folded */
+.panel-content {
+    position: absolute;
+    top: 0; /* Use full panel space */
+    left: 0;
+    width: 100%;
+    height: 100%; /* Use full panel height */
+    padding: 6px; /* Increased padding for more breathing room */
+    color: white;
+    text-align: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out; /* Only fade transition */
+    transition-delay: 0s; /* No delay for immediate fade */
+    transform: none; /* Remove any transform that might cause movement */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Distribute content evenly */
+    align-items: center;
+    gap: 3px; /* Increased gap for better spacing */
+    overflow-y: visible; /* Remove scrollbar */
+    font-size: 0.8rem;
+}
+
+/* Open Tracker button - visible when folded (under bubble) */
+.widget-tracker-btn-folded {
+    position: absolute;
+    bottom: 9px; /* Moved 10px more up (was -1px, now 9px) */
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 16px);
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    text-align: center;
+    display: block;
+    z-index: 10;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0.3s ease, background-color 0.3s ease;
+    pointer-events: auto; /* Allow clicking */
+}
+
+/* Hover effect for folded button - smooth color transition to lighter green */
+.widget-tracker-btn-folded:hover {
+    background-color: #a8e063 !important; /* Lighter green on hover */
+    transform: translateX(-50%) !important; /* Keep centered position */
+    text-decoration: none; /* No underline */
+}
+
+/* Fade out folded button when widget is hovered/expanded */
+.plant-widget:hover .widget-tracker-btn-folded {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition-delay: 1s; /* Increased delay before fading out */
+}
+
+/* Hide panel-content button when folded */
+.plant-widget:not(:hover) .panel-content {
+    visibility: hidden;
+    opacity: 0;
+}
+
+/* HOVER EFFECT - Unfold the widget */
+.plant-widget:hover {
+    width: 200px;
+    height: 220px; /* Much smaller height */
+    transition-delay: 1s; /* Increased delay before expansion */
+}
+
+.plant-widget:hover .plant-widget-inner {
+    width: 100%;
+    height: 100%;
+    margin-top: 40px; /* Space for larger floating bubble above */
+    transition-delay: 1s; /* Increased delay before expansion */
+}
+
+/* Keyframe animation to keep bubble in place until panel expands, then move */
+@keyframes bubbleHoldThenMove {
+    0%, 81.25% { /* 1.3s out of 1.6s total = 81.25% - hold until panel expansion completes (1s delay + 0.3s transition) */
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+    }
+    100% { /* Last 0.3s (18.75%) to move */
+        top: -35px;
+        left: calc(50% - 35px);
+        transform: translateX(-50%);
+        z-index: 10;
+    }
+}
+
+.plant-widget:hover .glass-bubble {
+    animation-play-state: paused !important; /* Freeze floating animation immediately */
+    animation: bubbleHoldThenMove 1.6s ease-in-out forwards !important; /* Wait for panel expansion (1.3s) + 0.3s move */
+    position: absolute !important;
+    top: 8px !important; /* Initial position - animation will change this after panel expands */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 70px !important;
+    height: 70px !important;
+    max-width: 70px !important;
+    min-width: 70px !important;
+    margin: 0 !important;
+    border-radius: 50% !important;
+    aspect-ratio: 1/1 !important;
+    z-index: 2 !important;
+    right: auto !important;
+}
+
+.plant-widget:hover .panel-content {
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 1s; /* Increased delay before showing content */
+    transform: none; /* No transform to prevent movement */
+}
+
+/* Remove fold button - not needed with hover */
+.fold-btn {
+    display: none;
+}
+
+/* Remove duplicate - already defined above */
+
+/* Fix seed image display - make it small like in main page */
+.plant-widget .glass-bubble .plant-stage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.plant-widget .glass-bubble .plant-stage.active {
+    opacity: 1;
+}
+
+.plant-widget .glass-bubble .plant-stage.fade-out {
+    opacity: 0;
+}
+
+.plant-mini-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    width: 100%;
+    font-size: 0.75rem;
+}
+
+.mini-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 0.7rem;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding: 2px 0;
+}
+
+.mini-row span {
+    color: #d0d0d0; /* lighter on dark bg */
+}
+
+.mini-row strong {
+    color: #ffffff;
+}
+
+.mini-section {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+    font-size: 0.7rem;
+}
+
+.mini-section h4 {
+    color: #ffffff;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+    font-weight: 600;
+}
+
+.mini-treatments {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: none; /* Remove height limit */
+    overflow-y: visible; /* Remove scrollbar */
+}
+
+.mini-treatments li {
+    font-size: 0.65rem;
+    color: #d0d0d0;
+    margin-bottom: 1px;
+    padding: 1px 0;
+    line-height: 1.2;
+}
+
+.mini-todo-form {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 0; /* Remove all margin */
+}
+
+.mini-todo-form input {
+    flex: 1;
+    padding: 2px 4px;
+    border: none;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    font-size: 0.65rem;
+}
+
+.mini-todo-form input::placeholder {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.65rem;
+}
+
+.mini-todo-form button {
+    background: #52AA8A;
+    border: none;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.65rem;
+}
+
+.mini-todo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: none; /* Remove height limit */
+    overflow-y: visible; /* Remove scrollbar */
+}
+
+.mini-todo-list li {
+    font-size: 0.65rem;
+    color: #d0d0d0;
+    padding: 1px 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    line-height: 1.2;
+}
+
+.mini-todo-list li.done {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.mini-btn {
+    display: inline-block;
+    background-color: #52AA8A;
+    color: #111;
+    text-decoration: none;
+    padding: 3px 6px; /* Reduced padding */
+    border-radius: 4px; /* Smaller border radius */
+    font-weight: 600;
+    font-size: 0.65rem; /* Smaller font */
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    text-align: center;
+    margin: 2px 0; /* Small margin top and bottom */
+}
+
+.mini-btn:hover {
+    background-color: #a8e063;
+    transform: translateY(-1px);
+}
+
+/* Open Tracker button - expanded to fit text properly */
+.widget-tracker-btn {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    text-align: center;
+    display: block;
+    margin-top: 6px;
+}
+
+@media (max-width: 768px) {
+    .plant-widget {
+        right: 12px;
+        bottom: 48px; /* moved a bit higher on mobile too */
+    }
+    .plant-widget .glass-bubble {
+        width: 50px !important;
+        height: 50px !important;
+        max-width: 50px !important;
+        min-width: 50px !important;
+        border-radius: 50% !important; /* Force perfect circle */
+        aspect-ratio: 1/1 !important; /* Ensure 1:1 ratio */
+    }
+}

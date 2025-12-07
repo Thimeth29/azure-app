@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Cost-Profit History - WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+        <style>
+            body {
+                background-image: url("/static/images/plant.jpg");
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+                background-repeat: no-repeat;
+            }
+
+            .history-container {
+                max-width: 1000px;
+                margin: 40px auto;
+                padding: 30px;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                backdrop-filter: blur(10px);
+            }
+
+            .history-title {
+                text-align: center;
+                color: #388659;
+                margin-bottom: 40px;
+                font-size: 2.8em;
+                font-weight: 700;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .history-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 30px;
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            }
+
+            .history-table th,
+            .history-table td {
+                padding: 15px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .history-table th {
+                background-color: #388659;
+                color: white;
+                font-weight: 700;
+                font-size: 1.1em;
+            }
+
+            .history-table tbody tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+
+            .history-table tbody tr:hover {
+                background-color: #e9ecef;
+            }
+
+            .profit-positive {
+                color: #27ae60;
+                font-weight: 700;
+            }
+
+            .profit-negative {
+                color: #e74c3c;
+                font-weight: 700;
+            }
+
+            .no-records {
+                text-align: center;
+                font-size: 1.2em;
+                color: #666;
+                padding: 50px;
+                background: #f8f9fa;
+                border-radius: 10px;
+            }
+
+            .back-btn {
+                display: inline-block;
+                margin-top: 20px;
+                padding: 12px 25px;
+                background: linear-gradient(135deg, #6c757d, #495057);
+                color: white;
+                text-decoration: none;
+                border-radius: 8px;
+                transition: all 0.3s ease;
+                font-weight: 600;
+                box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+            }
+
+            .back-btn:hover {
+                background: linear-gradient(135deg, #495057, #343a40);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+            }
+        </style>
+{% endblock %}
+
+{% block content %}
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if
+        messages %} {% for category, message in messages %}
+        <div class="flash-{{ category }}">{{ message }}</div>
+        {% endfor %} {% endif %} {% endwith %}
+
+        <main>
+            <div class="history-container">
+                <h1 class="history-title" data-i18n="costProfit.history">Cost-Profit History</h1>
+
+                {% if records %}
+                <div class="table-responsive">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="costProfit.date">Date</th>
+                                <th data-i18n="costProfit.totalCostCol">Total Cost (Rs.)</th>
+                                <th data-i18n="costProfit.totalRevenueCol">Total Revenue (Rs.)</th>
+                                <th data-i18n="costProfit.marketPriceCol">Market Price (Rs./kg)</th>
+                                <th data-i18n="costProfit.profitCol">Profit (Rs.)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr>
+                                <td>
+                                    {{ record.date.strftime('%Y-%m-%d %H:%M')
+                                    }}
+                                </td>
+                                <td>
+                                    {{ "%.2f"|format(record.total_cost) }}
+                                </td>
+                                <td>
+                                    {{ "%.2f"|format(record.total_revenue) }}
+                                </td>
+                                <td>
+                                    {{ "%.2f"|format(record.market_price) }}
+                                </td>
+                                <td
+                                    class="{{ 'profit-positive' if record.profit >= 0 else 'profit-negative' }}"
+                                >
+                                    {{ "%.2f"|format(record.profit) }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="no-records">
+                    <p data-i18n="costProfit.noHistory">No history records found.</p>
+                    <p data-i18n="costProfit.goToAnalysis">
+                        Go to the analysis page to calculate and save your first record.
+                    </p>
+                </div>
+                {% endif %}
+
+                <a
+                    href="{{ url_for('cost_profit_analysis') }}"
+                    class="back-btn"
+                    data-i18n="costProfit.backToAnalysis"
+                    >← Back to Analysis</a
+                >
+            </div>
+        </main>
+{% endblock %}

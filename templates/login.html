@@ -1,0 +1,64 @@
+<!-- templates/login.html -->
+{% extends "base.html" %}
+
+{% block title %}Log In - WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Fix footer positioning */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        footer {
+            margin-top: auto;
+            position: relative;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <main>
+        <section class="form-container">
+            <h1 data-i18n="login.title">Log In</h1>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            <form method="POST" action="{{ url_for('user_login') }}" aria-label="Login form">
+                {{ form.hidden_tag() }}
+                <div class="form-group">
+                    <label for="username" data-i18n="login.username">Username</label>
+                    {{ form.username(id="username", required=True, autofocus=True, **{'aria-required': 'true'}) }}
+                    {% if form.username.errors %}
+                        <span class="error">{{ form.username.errors[0] }}</span>
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="password" data-i18n="login.password">Password</label>
+                    {{ form.password(id="password", required=True, **{'aria-required': 'true'}) }}
+                    {% if form.password.errors %}
+                        <span class="error">{{ form.password.errors[0] }}</span>
+                    {% endif %}
+                </div>
+                <button type="submit" class="weather-btn" data-i18n="login.submitButton">Log In</button>
+            </form>
+            <p class="form-footer">
+                <span data-i18n="login.signUpQuestion">Don't have an account?</span> <a href="{{ url_for('signup') }}"><span data-i18n="login.signUpLink">Sign up here</span></a><br>
+                <a href="{{ url_for('login_selector') }}"><i class="fas fa-arrow-left"></i> <span data-i18n="login.backToSelection">Back to Login Selection</span></a>
+            </p>
+        </section>
+    </main>
+{% endblock %}

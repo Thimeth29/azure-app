@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - WeatherGuard Harvest{% endblock %}
+
+{% block extra_css %}
+        <style>
+            .registration-container {
+                max-width: 700px;
+                margin: 20px auto;
+                padding: 15px;
+            }
+            .step-indicator {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 20px;
+                gap: 10px;
+            }
+            .step {
+                width: 35px;
+                height: 35px;
+                border-radius: 50%;
+                background: #e0f2e9;
+                color: #388659;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                border: 2px solid #388659;
+                font-size: 0.9em;
+            }
+            .step.active {
+                background: #388659;
+                color: white;
+            }
+            .step.completed {
+                background: #52AA8A;
+                color: white;
+            }
+            .step-content {
+                display: none;
+                background: rgba(0, 0, 0, 0.7);
+                color: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+            .step-content.active {
+                display: block;
+            }
+            .form-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+            .form-group {
+                margin-bottom: 15px;
+            }
+            .form-group.full-width {
+                grid-column: 1 / -1;
+            }
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-size: 0.9em;
+                color: #a8e063;
+            }
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                width: 100%;
+                padding: 8px;
+                border: none;
+                border-radius: 5px;
+                background-color: #e0f2e9;
+                color: #333;
+                font-size: 0.95em;
+            }
+            .form-group input[type="date"] {
+                padding: 8px;
+            }
+            .cultivation-section {
+                margin-bottom: 20px;
+                padding: 15px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            .cultivation-section h3 {
+                margin-top: 0;
+                color: #a8e063;
+                font-size: 1.1em;
+            }
+            .btn-group {
+                display: flex;
+                gap: 10px;
+                margin-top: 15px;
+                justify-content: space-between;
+            }
+            .cost-input-group {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+            .cost-input-group input {
+                flex: 1;
+            }
+            .cost-btn {
+                background: #52AA8A;
+                color: white;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            .cost-btn:hover {
+                background: #a8e063;
+            }
+            .modern-select {
+                appearance: none;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                padding-right: 30px;
+            }
+            .additional-cost-item {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 10px;
+                align-items: end;
+            }
+            .additional-cost-item input[type="text"] {
+                flex: 2;
+            }
+            .additional-cost-item .cost-input-group {
+                flex: 1;
+            }
+            .remove-cost-btn {
+                background: #ff6b6b;
+                color: white;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+            .vegetable-search {
+                margin-bottom: 10px;
+            }
+            .vegetable-search input {
+                width: 100%;
+                padding: 8px;
+                border: none;
+                border-radius: 5px;
+                background-color: #e0f2e9;
+                color: #333;
+                font-size: 0.9em;
+            }
+            .vegetable-list {
+                max-height: 150px;
+                overflow-y: auto;
+                background: rgba(255, 255, 255, 0.1);
+                padding: 8px;
+                border-radius: 5px;
+                margin-top: 8px;
+            }
+            .vegetable-item {
+                padding: 6px;
+                margin: 3px 0;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background 0.3s;
+                font-size: 0.85em;
+            }
+            .vegetable-item:hover {
+                background: rgba(168, 224, 99, 0.3);
+            }
+            .vegetable-item.selected {
+                background: #52AA8A;
+            }
+            .selected-plants {
+                margin-top: 10px;
+            }
+            .selected-plant-tag {
+                display: inline-block;
+                padding: 4px 8px;
+                margin: 3px;
+                background: #52AA8A;
+                border-radius: 12px;
+                font-size: 0.8em;
+            }
+            .selected-plant-tag .remove {
+                margin-left: 6px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            .add-cultivation-btn {
+                background: #52AA8A;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 15px;
+                width: 100%;
+            }
+            .remove-cultivation-btn {
+                background: #ff6b6b;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 5px;
+                cursor: pointer;
+                float: right;
+                font-size: 0.85em;
+            }
+            .add-cost-btn {
+                background: #388659;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 0.85em;
+                margin-top: 5px;
+            }
+        </style>
+{% endblock %}
+
+{% block content %}
+        <main>
+            <div class="registration-container">
+                <h1 style="text-align: center; color: #388659; margin-bottom: 15px; font-size: 1.8em;" data-i18n="signup.title">Create Your Account</h1>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <!-- Step Indicator -->
+                <div class="step-indicator">
+                    <div class="step active" id="step-1-indicator">1</div>
+                    <div class="step" id="step-2-indicator">2</div>
+                </div>
+
+                <form method="POST" action="{{ url_for('signup') }}" id="registration-form" aria-label="Registration form">
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Step 1: Personal Details -->
+                    <div class="step-content active" id="step-1">
+                        <h2 style="color: #a8e063; margin-bottom: 15px; font-size: 1.3em;" data-i18n="signup.step1">Personal Details</h2>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="first_name" data-i18n="signup.firstName">First Name *</label>
+                                {{ form.first_name(id="first_name", required=True, autofocus=True, **{'aria-required': 'true'}) }}
+                                {% if form.first_name.errors %}
+                                <span class="error">{{ form.first_name.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label for="last_name" data-i18n="signup.lastName">Last Name *</label>
+                                {{ form.last_name(id="last_name", required=True, **{'aria-required': 'true'}) }}
+                                {% if form.last_name.errors %}
+                                <span class="error">{{ form.last_name.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="username" data-i18n="signup.username">Username *</label>
+                                {{ form.username(id="username", required=True, **{'aria-required': 'true'}) }}
+                                {% if form.username.errors %}
+                                <span class="error">{{ form.username.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label for="email" data-i18n="signup.email">Email *</label>
+                                {{ form.email(id="email", required=True, **{'aria-required': 'true'}) }}
+                                {% if form.email.errors %}
+                                <span class="error">{{ form.email.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="mobile_number" data-i18n="signup.mobileNumber">Mobile Number *</label>
+                                {{ form.mobile_number(id="mobile_number", required=True, **{'aria-required': 'true'}) }}
+                                {% if form.mobile_number.errors %}
+                                <span class="error">{{ form.mobile_number.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label for="date_of_birth" data-i18n="signup.dateOfBirth">Date of Birth</label>
+                                {{ form.date_of_birth(id="date_of_birth", type="date") }}
+                                {% if form.date_of_birth.errors %}
+                                <span class="error">{{ form.date_of_birth.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="address_city" data-i18n="signup.city">City</label>
+                            {{ form.address_city(id="address_city") }}
+                            {% if form.address_city.errors %}
+                            <span class="error">{{ form.address_city.errors[0] }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="address_line1" data-i18n="signup.addressLine1">Address Line 1</label>
+                            {{ form.address_line1(id="address_line1") }}
+                            {% if form.address_line1.errors %}
+                            <span class="error">{{ form.address_line1.errors[0] }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="address_line2" data-i18n="signup.addressLine2">Address Line 2</label>
+                            {{ form.address_line2(id="address_line2") }}
+                            {% if form.address_line2.errors %}
+                            <span class="error">{{ form.address_line2.errors[0] }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="password" data-i18n="signup.password">Password *</label>
+                                {{ form.password(id="password", required=True, **{'aria-required': 'true'}) }}
+                                {% if form.password.errors %}
+                                <span class="error">{{ form.password.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm_password" data-i18n="signup.confirmPassword">Confirm Password *</label>
+                                {{ form.confirm_password(id="confirm_password", required=True, **{'aria-required': 'true'}) }}
+                                {% if form.confirm_password.errors %}
+                                <span class="error">{{ form.confirm_password.errors[0] }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="btn-group">
+                            <div></div>
+                            <button type="button" class="weather-btn" onclick="nextStep()" data-i18n="signup.nextCultivation">Next: Cultivation Details</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Cultivation Details -->
+                    <div class="step-content" id="step-2">
+                        <h2 style="color: #a8e063; margin-bottom: 15px; font-size: 1.3em;" data-i18n="signup.step2">Cultivation Details</h2>
+                        <p style="margin-bottom: 15px; color: #e0f2e9; font-size: 0.9em;" data-i18n="signup.cultivationDetailsDesc">Add information about your cultivation areas and the plants you plan to grow.</p>
+                        
+                        <div id="cultivations-container">
+                            <!-- Cultivation sections will be added here dynamically -->
+                        </div>
+
+                        <button type="button" class="add-cultivation-btn" onclick="addCultivation()" data-i18n="signup.addAnotherCultivation">+ Add Another Cultivation Area</button>
+
+                        <div class="btn-group">
+                            <button type="button" class="weather-btn" onclick="prevStep()" data-i18n="common.back">Back</button>
+                            <button type="submit" class="weather-btn" data-i18n="signup.completeRegistration">Complete Registration</button>
+                        </div>
+                    </div>
+
+                    <!-- Hidden input to store cultivation data as JSON -->
+                    <input type="hidden" name="cultivation_data" id="cultivation_data" value="">
+                </form>
+
+                <p style="text-align: center; margin-top: 15px; font-size: 0.9em;">
+                    Already have an account?
+                    <a href="{{ url_for('login_selector') }}" style="color: #a8e063;">Log in here</a>.
+                </p>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 WeatherGuard Harvest. All rights reserved.</p>
+        </footer>
+
+        <script src="{{ url_for('static', filename='vegetables_data.js') }}"></script>
+        <script>
+            let currentStep = 1;
+            let cultivationCount = 0;
+            const categories = ['grains-legumes', 'fruity-vegetables', 'leafy-stem', 'root-tuberous'];
+            const categoryNames = {
+                'grains-legumes': 'Grains & Legumes',
+                'fruity-vegetables': 'Fruity Vegetables',
+                'leafy-stem': 'Leafy & Stem Vegetables',
+                'root-tuberous': 'Root & Tuberous Vegetables'
+            };
+            const cities = {{ cities | tojson }};
+
+            function nextStep() {
+                if (currentStep === 1) {
+                    const required = document.querySelectorAll('#step-1 [required]');
+                    let valid = true;
+                    required.forEach(field => {
+                        if (!field.value.trim()) {
+                            valid = false;
+                            field.style.border = '2px solid #ff6b6b';
+                        } else {
+                            field.style.border = '';
+                        }
+                    });
+                    if (!valid) {
+                        alert('Please fill in all required fields.');
+                        return;
+                    }
+                    if (cultivationCount === 0) {
+                        addCultivation();
+                    }
+                }
+                
+                if (currentStep < 2) {
+                    document.getElementById(`step-${currentStep}`).classList.remove('active');
+                    document.getElementById(`step-${currentStep}-indicator`).classList.remove('active');
+                    document.getElementById(`step-${currentStep}-indicator`).classList.add('completed');
+                    currentStep++;
+                    document.getElementById(`step-${currentStep}`).classList.add('active');
+                    document.getElementById(`step-${currentStep}-indicator`).classList.add('active');
+                }
+            }
+
+            function prevStep() {
+                if (currentStep > 1) {
+                    document.getElementById(`step-${currentStep}`).classList.remove('active');
+                    document.getElementById(`step-${currentStep}-indicator`).classList.remove('active');
+                    currentStep--;
+                    document.getElementById(`step-${currentStep}`).classList.add('active');
+                    document.getElementById(`step-${currentStep}-indicator`).classList.add('active');
+                    document.getElementById(`step-${currentStep}-indicator`).classList.remove('completed');
+                }
+            }
+
+            function adjustCost(cultivationId, costType, direction) {
+                const input = document.getElementById(`${costType}_${cultivationId}`);
+                let value = parseFloat(input.value) || 0;
+                value += direction * 1000; // Increment/decrement by 1000 (10*100)
+                if (value < 0) value = 0;
+                input.value = value.toFixed(2);
+            }
+
+            function addCultivation() {
+                cultivationCount++;
+                const container = document.getElementById('cultivations-container');
+                const div = document.createElement('div');
+                div.className = 'cultivation-section';
+                div.id = `cultivation-${cultivationCount}`;
+                
+                div.innerHTML = `
+                    <button type="button" class="remove-cultivation-btn" onclick="removeCultivation(${cultivationCount})">Remove</button>
+                    <h3>Cultivation Area ${cultivationCount}</h3>
+                    
+                    <div class="form-group">
+                        <label>Area of Cultivation *</label>
+                        <input type="text" name="area_name_${cultivationCount}" id="area_name_${cultivationCount}" required placeholder="e.g., North Field, Main Plot">
+                    </div>
+
+                    <div class="form-group">
+                        <label>City *</label>
+                        <select name="city_${cultivationCount}" id="city_${cultivationCount}" required class="modern-select" onchange="updateSubAreas(${cultivationCount})">
+                            <option value="">Select City</option>
+                            ${cities.map(city => {
+                                // Translate city name if function is available
+                                let displayCity = city;
+                                if (window.translateCityName && typeof window.translateCityName === 'function') {
+                                    const translated = window.translateCityName(city);
+                                    if (translated && translated !== city) {
+                                        displayCity = translated;
+                                    }
+                                }
+                                return `<option value="${city}">${displayCity}</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sub-Area (Exact Location)</label>
+                        <input type="text" name="sub_area_${cultivationCount}" id="sub_area_${cultivationCount}" placeholder="Specific area within city for weather mapping">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Surface Area (square meters or acres)</label>
+                        <input type="number" name="surface_area_${cultivationCount}" id="surface_area_${cultivationCount}" step="0.01" min="0" placeholder="e.g., 1000">
+                    </div>
+
+                    <h4 style="color: #a8e063; margin-top: 15px; font-size: 1em;">Initial Costs</h4>
+                    <div class="form-group">
+                        <label>Seedlings Cost (LKR)</label>
+                        <div class="cost-input-group">
+                            <button type="button" class="cost-btn" onclick="adjustCost(${cultivationCount}, 'seedling_cost', -1)">-</button>
+                            <input type="number" name="seedling_cost_${cultivationCount}" id="seedling_cost_${cultivationCount}" step="1000" min="0" value="0" onchange="this.value = Math.round(this.value / 1000) * 1000">
+                            <button type="button" class="cost-btn" onclick="adjustCost(${cultivationCount}, 'seedling_cost', 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Fertilizer Cost (LKR)</label>
+                        <div class="cost-input-group">
+                            <button type="button" class="cost-btn" onclick="adjustCost(${cultivationCount}, 'fertilizer_cost', -1)">-</button>
+                            <input type="number" name="fertilizer_cost_${cultivationCount}" id="fertilizer_cost_${cultivationCount}" step="1000" min="0" value="0" onchange="this.value = Math.round(this.value / 1000) * 1000">
+                            <button type="button" class="cost-btn" onclick="adjustCost(${cultivationCount}, 'fertilizer_cost', 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Human & Machine Resource Costs (LKR)</label>
+                        <div class="cost-input-group">
+                            <button type="button" class="cost-btn" onclick="adjustCost(${cultivationCount}, 'resource_cost', -1)">-</button>
+                            <input type="number" name="resource_cost_${cultivationCount}" id="resource_cost_${cultivationCount}" step="1000" min="0" value="0" onchange="this.value = Math.round(this.value / 1000) * 1000">
+                            <button type="button" class="cost-btn" onclick="adjustCost(${cultivationCount}, 'resource_cost', 1)">+</button>
+                        </div>
+                    </div>
+
+                    <div id="additional_costs_${cultivationCount}">
+                        <h4 style="color: #a8e063; margin-top: 15px; font-size: 1em;">Additional Costs</h4>
+                    </div>
+                    <button type="button" class="add-cost-btn" onclick="addAdditionalCost(${cultivationCount})">+ Add Additional Cost</button>
+
+                    <h4 style="color: #a8e063; margin-top: 15px; font-size: 1em;">Plants to Cultivate *</h4>
+                    <p style="font-size: 0.85em; color: #e0f2e9; margin-bottom: 10px;">Select plants from the categories below. You can add more plants anytime after registration.</p>
+                    
+                    ${categories.map(cat => `
+                        <div style="margin: 15px 0;">
+                            <h5 style="color: #a8e063; font-size: 0.95em;">${categoryNames[cat]}</h5>
+                            <div class="vegetable-search">
+                                <input type="text" id="search_${cultivationCount}_${cat}" placeholder="Search ${categoryNames[cat]}..." onkeyup="filterVegetables(${cultivationCount}, '${cat}')">
+                            </div>
+                            <div class="vegetable-list" id="list_${cultivationCount}_${cat}"></div>
+                            <div class="selected-plants" id="selected_${cultivationCount}_${cat}"></div>
+                        </div>
+                    `).join('')}
+                `;
+                
+                container.appendChild(div);
+                categories.forEach(cat => {
+                    renderVegetableList(cultivationCount, cat);
+                });
+            }
+
+            let additionalCostCounters = {};
+
+            function addAdditionalCost(cultivationId) {
+                if (!additionalCostCounters[cultivationId]) {
+                    additionalCostCounters[cultivationId] = 0;
+                }
+                additionalCostCounters[cultivationId]++;
+                const costId = additionalCostCounters[cultivationId];
+                const container = document.getElementById(`additional_costs_${cultivationId}`);
+                
+                const div = document.createElement('div');
+                div.className = 'additional-cost-item';
+                div.id = `additional_cost_${cultivationId}_${costId}`;
+                div.innerHTML = `
+                    <input type="text" name="additional_cost_name_${cultivationId}_${costId}" placeholder="Cost name (e.g., Irrigation, Pesticides)" required>
+                    <div class="cost-input-group">
+                        <button type="button" class="cost-btn" onclick="adjustAdditionalCost(${cultivationId}, ${costId}, -1)">-</button>
+                        <input type="number" name="additional_cost_amount_${cultivationId}_${costId}" id="additional_cost_amount_${cultivationId}_${costId}" step="1000" min="0" value="0" onchange="this.value = Math.round(this.value / 1000) * 1000">
+                        <button type="button" class="cost-btn" onclick="adjustAdditionalCost(${cultivationId}, ${costId}, 1)">+</button>
+                    </div>
+                    <button type="button" class="remove-cost-btn" onclick="removeAdditionalCost(${cultivationId}, ${costId})">Remove</button>
+                `;
+                container.appendChild(div);
+            }
+
+            function adjustAdditionalCost(cultivationId, costId, direction) {
+                const input = document.getElementById(`additional_cost_amount_${cultivationId}_${costId}`);
+                let value = parseFloat(input.value) || 0;
+                value += direction * 1000;
+                if (value < 0) value = 0;
+                input.value = value.toFixed(2);
+            }
+
+            function removeAdditionalCost(cultivationId, costId) {
+                document.getElementById(`additional_cost_${cultivationId}_${costId}`).remove();
+            }
+
+            function removeCultivation(id) {
+                if (cultivationCount > 1) {
+                    document.getElementById(`cultivation-${id}`).remove();
+                    cultivationCount--;
+                } else {
+                    alert('You must have at least one cultivation area.');
+                }
+            }
+
+            function renderVegetableList(cultivationId, category) {
+                const listDiv = document.getElementById(`list_${cultivationId}_${category}`);
+                const vegetables = getVegetablesByCategory(category);
+                
+                listDiv.innerHTML = vegetables.map(veg => `
+                    <div class="vegetable-item" onclick="toggleVegetable(${cultivationId}, '${category}', '${veg.replace(/'/g, "\\'")}')">
+                        ${veg}
+                    </div>
+                `).join('');
+            }
+
+            function filterVegetables(cultivationId, category) {
+                const searchTerm = document.getElementById(`search_${cultivationId}_${category}`).value;
+                const filtered = searchVegetables(category, searchTerm);
+                const listDiv = document.getElementById(`list_${cultivationId}_${category}`);
+                
+                listDiv.innerHTML = filtered.map(veg => `
+                    <div class="vegetable-item" onclick="toggleVegetable(${cultivationId}, '${category}', '${veg.replace(/'/g, "\\'")}')">
+                        ${veg}
+                    </div>
+                `).join('');
+            }
+
+            const selectedPlants = {};
+
+            function toggleVegetable(cultivationId, category, plantName) {
+                if (!selectedPlants[cultivationId]) selectedPlants[cultivationId] = {};
+                if (!selectedPlants[cultivationId][category]) selectedPlants[cultivationId][category] = [];
+                
+                const index = selectedPlants[cultivationId][category].indexOf(plantName);
+                if (index > -1) {
+                    selectedPlants[cultivationId][category].splice(index, 1);
+                } else {
+                    selectedPlants[cultivationId][category].push(plantName);
+                }
+                
+                updateSelectedPlants(cultivationId, category);
+            }
+
+            function updateSelectedPlants(cultivationId, category) {
+                const selectedDiv = document.getElementById(`selected_${cultivationId}_${category}`);
+                const plants = selectedPlants[cultivationId] && selectedPlants[cultivationId][category] ? selectedPlants[cultivationId][category] : [];
+                
+                selectedDiv.innerHTML = plants.map(plant => `
+                    <span class="selected-plant-tag">
+                        ${plant}
+                        <span class="remove" onclick="removePlant(${cultivationId}, '${category}', '${plant.replace(/'/g, "\\'")}')">×</span>
+                    </span>
+                `).join('');
+            }
+
+            function removePlant(cultivationId, category, plantName) {
+                if (selectedPlants[cultivationId] && selectedPlants[cultivationId][category]) {
+                    const index = selectedPlants[cultivationId][category].indexOf(plantName);
+                    if (index > -1) {
+                        selectedPlants[cultivationId][category].splice(index, 1);
+                        updateSelectedPlants(cultivationId, category);
+                    }
+                }
+            }
+
+            function updateSubAreas(cultivationId) {
+                // Can be enhanced to show sub-areas based on city selection
+            }
+
+            // Collect cultivation data before form submission
+            document.getElementById('registration-form').addEventListener('submit', function(e) {
+                const cultivations = [];
+                
+                for (let i = 1; i <= cultivationCount; i++) {
+                    const cultivationDiv = document.getElementById(`cultivation-${i}`);
+                    if (!cultivationDiv) continue;
+                    
+                    const areaName = document.getElementById(`area_name_${i}`).value;
+                    const city = document.getElementById(`city_${i}`).value;
+                    const subArea = document.getElementById(`sub_area_${i}`).value;
+                    const surfaceArea = document.getElementById(`surface_area_${i}`).value;
+                    const seedlingCost = document.getElementById(`seedling_cost_${i}`).value;
+                    const fertilizerCost = document.getElementById(`fertilizer_cost_${i}`).value;
+                    const resourceCost = document.getElementById(`resource_cost_${i}`).value;
+                    
+                    if (!areaName || !city) {
+                        e.preventDefault();
+                        alert(`Please fill in required fields for Cultivation Area ${i}.`);
+                        return;
+                    }
+                    
+                    // Collect additional costs
+                    const additionalCosts = [];
+                    if (additionalCostCounters[i]) {
+                        for (let j = 1; j <= additionalCostCounters[i]; j++) {
+                            const costDiv = document.getElementById(`additional_cost_${i}_${j}`);
+                            if (costDiv) {
+                                const costName = document.querySelector(`input[name="additional_cost_name_${i}_${j}"]`).value;
+                                const costAmount = document.getElementById(`additional_cost_amount_${i}_${j}`).value;
+                                if (costName) {
+                                    additionalCosts.push({ name: costName, amount: costAmount });
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Collect plants
+                    const plants = [];
+                    if (selectedPlants[i]) {
+                        categories.forEach(cat => {
+                            if (selectedPlants[i][cat]) {
+                                selectedPlants[i][cat].forEach(plant => {
+                                    plants.push({ name: plant, category: cat });
+                                });
+                            }
+                        });
+                    }
+                    
+                    if (plants.length === 0) {
+                        e.preventDefault();
+                        alert(`Please select at least one plant for Cultivation Area ${i}.`);
+                        return;
+                    }
+                    
+                    cultivations.push({
+                        area_name: areaName,
+                        city: city,
+                        sub_area: subArea,
+                        surface_area: surfaceArea,
+                        initial_seedling_cost: seedlingCost,
+                        initial_fertilizer_cost: fertilizerCost,
+                        initial_resource_cost: resourceCost,
+                        additional_costs: additionalCosts,
+                        plants: plants
+                    });
+                }
+                
+                document.getElementById('cultivation_data').value = JSON.stringify(cultivations);
+            });
+            
+            // Function to translate city names in all city dropdowns on signup page
+            function translateSignupCityNames() {
+                if (!window.translateCityName || typeof window.translateCityName !== 'function') return;
+                
+                // Translate all city dropdowns (including dynamically added ones)
+                for (let i = 1; i <= cultivationCount; i++) {
+                    const citySelect = document.getElementById(`city_${i}`);
+                    if (citySelect) {
+                        Array.from(citySelect.options).forEach(option => {
+                            if (option.value && option.value !== '') {
+                                const translated = window.translateCityName(option.value);
+                                if (translated && translated !== option.value) {
+                                    option.textContent = translated;
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // Translate on page load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(translateSignupCityNames, 300);
+                });
+            } else {
+                setTimeout(translateSignupCityNames, 300);
+            }
+            
+            // Re-translate when language changes
+            window.addEventListener('languageChanged', function() {
+                translateSignupCityNames();
+            });
+            
+            // Also translate when new cultivation area is added
+            const originalAddCultivation = addCultivation;
+            addCultivation = function() {
+                originalAddCultivation();
+                // Translate the newly added city dropdown after a short delay
+                setTimeout(() => {
+                    translateSignupCityNames();
+                }, 100);
+            };
+        </script>
+{% endblock %}
