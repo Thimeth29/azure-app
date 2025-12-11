@@ -64,7 +64,7 @@ jobs:
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_43E91BC9A96B4A8AB97EC2EE71297D8C }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_DB294337D32447FD8C815E267E333698 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_dfefe929-8ea9-4994-af03-186a03125ab8 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_4221D58A935E40FBAB05FA9D61475DE0 }}
 
       - name: 'Deploy to Azure Web App'
@@ -73,4 +73,5 @@ jobs:
         with:
           app-name: 'second-flask'
           slot-name: 'Production'
+
           
